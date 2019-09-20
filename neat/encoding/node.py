@@ -8,7 +8,6 @@ class Node:
     def __init__(self, node_id: int, node_type: NodeType):
         self.id = node_id
         self.type = node_type
-        self.value = 0
 
     def is_input(self):
         return self.type == NodeType.INPUT
@@ -20,7 +19,7 @@ class Node:
         return self.type == NodeType.HIDDEN
 
     def __repr__(self):
-        return "Node(" + str(self.id) + ", " + str(self.type) + ", " + str(id(self)) + ")"
+        return "Node(" + str(self.id) + ", " + str(self.type) + ")"
 
     def __str__(self):
         return str(self.id) + ": " + str(self.type)

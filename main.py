@@ -1,4 +1,5 @@
 from dataset.dataset_xor import DatasetXor
+from neat.ann.ann import Ann
 from neat.neat import Neat
 
 c1 = 1.0
@@ -14,8 +15,8 @@ neat = Neat(c1, c2, c3, t, population_size, dataset)
 for i in range(generations):
     neat.next_generation()
 
-genotype = neat.get_best_genotype()
+ann = Ann(neat.get_best_genotype())
 for i in range(dataset.get_dataset_size()):
     dataset_item = dataset.next_item()
-    result = genotype.calculate()
-    print(str(dataset_item) + ": " + str(result))
+    result = ann.calculate(dataset_item.input)
+    print(str(dataset_item) + "; Result " + str(result))

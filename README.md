@@ -1,3 +1,3 @@
-# neat
+# NEAT
 
 Neuroevolution of augmenting topologies

@@ -21,7 +21,7 @@ class Population:
     def get_best(self) -> Genotype:
         best_fitness = 0
         for i in range(1, len(self._population)):
-            if self._population[best_fitness].get_fitness() < self._population[i].get_fitness():
+            if self._population[i].get_fitness() < self._population[best_fitness].get_fitness():
                 best_fitness = i
 
         return self._population[best_fitness]

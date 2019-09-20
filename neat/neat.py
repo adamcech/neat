@@ -24,9 +24,8 @@ class Neat:
 
         self._population = Population(population_size, self._dataset)
 
-    def get_best_genotype(self) -> Genotype:
-        return self._population.get_best()
-
     def next_generation(self):
         pass
 
+    def get_best_genotype(self) -> Genotype:
+        return self._population.get_best()
