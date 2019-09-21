@@ -13,5 +13,8 @@ class Dataset:
     def get_dataset_size(self) -> int:
         raise NotImplementedError()
 
+    def get_fitness(self, ann) -> float:
+        raise NotImplementedError()
+
     def next_item(self) -> DatasetItem:
         raise NotImplementedError()

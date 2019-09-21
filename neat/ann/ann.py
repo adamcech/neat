@@ -1,7 +1,6 @@
 from typing import List
 
 from neat.ann.connection import Connection
-from neat.encoding.genotype import Genotype
 from neat.ann.neuron import Neuron
 from neat.ann.hidden_neuron import HiddenNeuron
 
@@ -9,7 +8,7 @@ from neat.ann.hidden_neuron import HiddenNeuron
 class Ann:
     """Genotype to ANN mapping
     """
-    def __init__(self, genotype: Genotype):
+    def __init__(self, genotype: "Genotype"):
         self._inputs = []  # type: List[Neuron]
         self._hidden = []  # type: List[HiddenNeuron]
         self._outputs = []  # type: List[HiddenNeuron]
@@ -27,11 +26,12 @@ class Ann:
         for edge in genotype.edges:
             for l in [self._hidden, self._outputs]:
                 for output_neuron in l:
-                    if edge.output == output_neuron.id:
+                    if edge.output.id == output_neuron.id:
                         for ll in [self._inputs, self._hidden]:
                             for input_neuron in ll:
-                                if edge.input == input_neuron.id:
+                                if edge.input.id == input_neuron.id:
                                     output_neuron.connections.append(Connection(edge.weight, input_neuron))
+                                    break
 
     def calculate(self, item_input: List[float]) -> List[float]:
         self.current_final_state = not self.current_final_state

@@ -14,6 +14,7 @@ class Neat:
          population_size (int): Population Size
          dataset (Dataset): Dataset to use
     """
+
     def __init__(self, c1: float, c2: float, c3: float, t: float, population_size: int, dataset: Dataset):
         self._c1 = c1
         self._c2 = c2
@@ -24,8 +25,17 @@ class Neat:
 
         self._population = Population(population_size, self._dataset)
 
-    def next_generation(self):
-        pass
+    def next_generations(self, generations: int):
+        for i in range(1, generations + 1):
+            self._next_generation()
+            print("Generation: " + str(i) + "; Best fitness: " + str(self.get_best_genotype().get_fitness()) + ";")
+
+    def _next_generation(self):
+        self._population.crossover()
+        self._population.mutate_weights()
+        self._population.mutate_add_edge()
+        self._population.mutate_add_node()
+        self._population.evaluate(self._dataset)
 
     def get_best_genotype(self) -> Genotype:
         return self._population.get_best()

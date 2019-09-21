@@ -1,5 +1,7 @@
 from collections import Generator
 
+import numpy as np
+
 from dataset.dataset import Dataset
 from dataset.dataset_item import DatasetItem
 
@@ -28,6 +30,15 @@ class DatasetXor(Dataset):
 
     def get_dataset_size(self) -> int:
         return 4
+
+    def get_fitness(self, ann) -> float:
+        fitness = 0
+
+        for item in self._dataset:
+            result = ann.calculate(item.input)
+            fitness += np.abs(sum([item.output[i] - result[i] for i in range(self.get_output_size())]))
+
+        return 4 - fitness
 
     def next_item(self) -> DatasetItem:
         return next(self._generator)

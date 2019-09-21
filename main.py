@@ -10,12 +10,13 @@ population_size = 150
 generations = 100
 
 dataset = DatasetXor()
+
 neat = Neat(c1, c2, c3, t, population_size, dataset)
+neat.next_generations(generations)
 
-for i in range(generations):
-    neat.next_generation()
-
-ann = Ann(neat.get_best_genotype())
+genotype = neat.get_best_genotype()
+print(genotype)
+ann = Ann(genotype)
 for i in range(dataset.get_dataset_size()):
     dataset_item = dataset.next_item()
     result = ann.calculate(dataset_item.input)

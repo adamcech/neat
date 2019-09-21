@@ -20,5 +20,6 @@ class HiddenNeuron(Neuron):
         if self._done != self._ann.current_final_state:
             self._done = not self._done
             self._output = 1/(1 + np.power(np.e, -4.9 * sum([connection.forward() for connection in self.connections])))
+            # self._output = sum([connection.forward() for connection in self.connections])
 
         return self._output

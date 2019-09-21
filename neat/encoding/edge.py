@@ -13,21 +13,29 @@ class Edge:
         Edge.__innovation_counter += 1
         return Edge.__innovation_counter
 
-    def __init__(self, input_node: Node, output_node: Node):
-        self.input = input_node.id
-        self.output = output_node.id
+    def __init__(self, input_node: Node, output_node: Node, **kwargs):
+        self.input = input_node
+        self.output = output_node
 
-        self.weight = np.random.uniform(-1, 1)
+        weight = kwargs.get("weight", None)
+        self.weight = np.random.uniform(-1, 1) if weight is None else weight
+
         self.enabled = True
         self.innovation = Edge.next_innovation_value()
 
     def mutate_random_weight(self):
         self.weight = np.random.uniform(-1, 1)
 
+    def mutate_perturbate_weight(self):
+        self.weight += np.random.normal(0.0, 0.5)
+
     def __repr__(self):
-        return "Connection(" + str(self.input) + ", " + str(self.output) + ", " + str(self.weight) + ", " + \
+        """
+        return "Edge(" + str(self.input.id) + ", " + str(self.output.id) + ", " + str(self.weight) + ", " + \
                str(self.enabled) + ", " + str(self.innovation) + ")"
+        """
+        return str(self.input.id) + "->" + str(self.output.id) if self.enabled else ""
 
     def __str__(self):
-        return str(self.input) + "->" + str(self.output) + ": Weight: " + str(self.weight) + " Innovation: " + \
+        return str(self.input.id) + "->" + str(self.output.id) + ": Weight: " + str(self.weight) + " Innovation: " + \
                str(self.innovation) + " Enabled: " + str(self.enabled)
