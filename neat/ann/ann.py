@@ -26,10 +26,10 @@ class Ann:
         for edge in genotype.edges:
             for l in [self._hidden, self._outputs]:
                 for output_neuron in l:
-                    if edge.output.id == output_neuron.id:
+                    if edge.output == output_neuron.id:
                         for ll in [self._inputs, self._hidden]:
                             for input_neuron in ll:
-                                if edge.input.id == input_neuron.id:
+                                if edge.input == input_neuron.id:
                                     output_neuron.connections.append(Connection(edge.weight, input_neuron))
                                     break
 

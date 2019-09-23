@@ -16,18 +16,13 @@ class Neat:
     """
 
     def __init__(self, c1: float, c2: float, c3: float, t: float, population_size: int, dataset: Dataset):
-        self._c1 = c1
-        self._c2 = c2
-        self._c3 = c3
-        self._t = t
-        self._population_size = population_size
         self._dataset = dataset
-
-        self._population = Population(population_size, self._dataset)
+        self._population = Population(c1, c2, c3, t, population_size, self._dataset)
 
     def next_generations(self, generations: int):
         for i in range(1, generations + 1):
             self._next_generation()
+            # self._population.print_all_fitness()
             print("Generation: " + str(i) + "; Best fitness: " + str(self.get_best_genotype().get_fitness()) + ";")
 
     def _next_generation(self):

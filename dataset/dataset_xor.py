@@ -38,7 +38,7 @@ class DatasetXor(Dataset):
             result = ann.calculate(item.input)
             fitness += np.abs(sum([item.output[i] - result[i] for i in range(self.get_output_size())]))
 
-        return 4 - fitness
+        return np.power(4 - fitness, 2)
 
     def next_item(self) -> DatasetItem:
         return next(self._generator)
