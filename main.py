@@ -1,6 +1,5 @@
 from dataset.dataset_xor import DatasetXor
 from neat.ann.ann import Ann
-from neat.encoding.genotype import Genotype
 from neat.neat import Neat
 
 c1 = 1.0
@@ -9,7 +8,7 @@ c3 = 0.4
 t = 3
 
 population_size = 150
-generations = 100
+generations = 200
 
 dataset = DatasetXor()
 

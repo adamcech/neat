@@ -18,6 +18,9 @@ class Node:
     def is_hidden(self):
         return self.type == NodeType.HIDDEN
 
+    def is_bias(self):
+        return self.type == NodeType.BIAS
+
     def __repr__(self):
         return "Node(" + str(self.id) + ", " + str(self.type) + ")"
 

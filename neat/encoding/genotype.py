@@ -5,12 +5,10 @@ from typing import List
 import numpy as np
 
 from dataset.dataset import Dataset
+from neat.encoding.innovation_map import InnovationMap
 from neat.ann.ann import Ann
 from neat.encoding.edge import Edge
-from neat.encoding.mutation_edge import MutationEdge
-from neat.encoding.mutation_node import MutationNode
 from neat.encoding.node import Node
-from neat.encoding.node_id_map import NodeIdMap
 from neat.encoding.node_type import NodeType
 
 
@@ -18,18 +16,12 @@ class Genotype:
     """Holds both nodes and connection
     """
 
-    __node_id_map = NodeIdMap()
-
-    @staticmethod
-    def shit():
-        return Genotype.__node_id_map
+    __innovation_map = InnovationMap()
 
     def __init__(self):
         self.nodes = []  # type: List[Node]
         self.edges = []  # type: List[Edge]
-
         self._fitness = 0
-        self._shared_fitness = 0
 
     @staticmethod
     def initial_genotype(dataset: Dataset) -> "Genotype":
@@ -37,120 +29,78 @@ class Genotype:
 
         # Adding input nodes
         for i in range(dataset.get_input_size()):
-            genotype.nodes.append(Node(Genotype.__node_id_map.next_id(), NodeType.INPUT))
+            genotype.nodes.append(Node(Genotype.__innovation_map.next_innovation(), NodeType.INPUT))
 
         # Adding output nodes
         for i in range(dataset.get_output_size()):
-            genotype.nodes.append(Node(Genotype.__node_id_map.next_id(), NodeType.OUTPUT))
+            genotype.nodes.append(Node(Genotype.__innovation_map.next_innovation(), NodeType.OUTPUT))
 
         # Connecting inputs to outputs
-        for input_node in genotype.nodes:
-            if input_node.is_input():
-                for output_node in genotype.nodes:
-                    if output_node.is_output():
-                        genotype._add_edge(genotype._create_edge(input_node.id, output_node.id))
+        for input_node in [node for node in genotype.nodes if node.is_input()]:
+            for output_node in [node for node in genotype.nodes if node.is_output()]:
+                genotype.edges.append(
+                    Edge(input_node.id, output_node.id, True,
+                         Genotype.__innovation_map.get_edge_innovation(input_node.id, output_node.id)))
 
         return genotype
 
-    def mutate_add_node(self, mutations: List[MutationNode]):
-        old_edge = random.sample(self.edges, 1)[0]
+    def initial_copy(self) -> "Genotype":
+        cp = copy.deepcopy(self)
+        for connection in self.edges:
+            connection.mutate_random_weight()
+        return cp
+
+    def deepcopy(self) -> "Genotype":
+        return copy.deepcopy(self)
+
+    def mutate_add_node(self):
+        old_edge = random.sample(self.edges, 1)[0]  # type: Edge
         old_edge.enabled = False
 
-        new_node = self._create_node(old_edge.input, old_edge.output)
+        new_node = Node(Genotype.__innovation_map.get_node_innovation(old_edge.input, old_edge.output, self.nodes),
+                        NodeType.HIDDEN)
 
-        original_edge = self._create_edge(old_edge.input, new_node.id, weight=old_edge.weight)
-        new_edge = self._create_edge(new_node.id, old_edge.output, weight=1)
+        new_edge = Edge(old_edge.input,
+                        new_node.id,
+                        True,
+                        Genotype.__innovation_map.get_edge_innovation(old_edge.input, new_node.id),
+                        weight=1)
 
-        new_innovation = True
-        same_mutation = None
-        for mutation in mutations:
-            if mutation.old_edge.innovation == old_edge.innovation:
-                new_innovation = False
-                same_mutation = mutation
-                break
+        original_edge = Edge(new_node.id,
+                             old_edge.output,
+                             True,
+                             Genotype.__innovation_map.get_edge_innovation(new_node.id, old_edge.output),
+                             weight=old_edge.weight)
 
-        self._add_node(new_node)
+        self.nodes.append(new_node)
+        self.edges.append(new_edge)
+        self.edges.append(original_edge)
 
-        if new_innovation:
-            self._add_edge(original_edge)
-            self._add_edge(new_edge)
-            mutations.append(MutationNode(old_edge, new_node, original_edge, new_edge))
-        else:
-            self._add_edge(original_edge, innovation=same_mutation.original_edge.innovation)
-            self._add_edge(new_edge, innovation=same_mutation.new_edge.innovation)
-
-    def mutate_add_edge(self, mutations: List[MutationEdge]):
+    def mutate_add_edge(self):
         for try_counter in range(0, 10):
             samples = random.sample(self.nodes, 2)
             input_node = samples[0]  # type: Node
             output_node = samples[1]  # type: Node
-            if input_node.type == NodeType.OUTPUT or output_node.type == NodeType.INPUT or \
-                    (input_node.type == NodeType.INPUT and output_node.type == NodeType.INPUT) or \
-                    (input_node.type == NodeType.OUTPUT and output_node.type == NodeType.OUTPUT) or \
-                    any((edge.input == input_node.id and edge.output == output_node.id) or
-                        (edge.input == output_node.id and edge.output == input_node.id) for edge in self.edges):
+            if (input_node.type == NodeType.OUTPUT or output_node.type == NodeType.INPUT) or \
+               (input_node.type == NodeType.INPUT and output_node.type == NodeType.INPUT) or \
+               (input_node.type == NodeType.OUTPUT and output_node.type == NodeType.OUTPUT) or \
+               any((edge.input == input_node.id and edge.output == output_node.id) or
+                   (edge.input == output_node.id and edge.output == input_node.id) for edge in self.edges):
                 continue
 
             if not self._is_new_edge_recurrent(input_node.id, output_node.id):
-                new_edge = self._create_edge(input_node.id, output_node.id)
-
-                new_innovation = True
-                same_mutation = None
-
-                for mutation in mutations:
-                    if mutation.new_edge.input == new_edge.input and mutation.new_edge.output == new_edge.output:
-                        new_innovation = False
-                        same_mutation = mutation
-                        break
-
-                if new_innovation:
-                    self._add_edge(new_edge)
-                    mutations.append(MutationEdge(new_edge))
-                else:
-                    self._add_edge(new_edge, innovation=same_mutation.new_edge.innovation)
-
+                self.edges.append(
+                    Edge(input_node.id,
+                         output_node.id,
+                         True,
+                         Genotype.__innovation_map.get_edge_innovation(input_node.id, output_node.id)))
                 break
 
-    def get_population_copy(self) -> "Genotype":
-        cp = copy.deepcopy(self)
-        for connection in self.edges:
-            connection.mutate_random_weight()
-
-        return cp
-
-    def evaluate(self, dataset: Dataset):
+    def calculate_fitness(self, dataset: Dataset):
         self._fitness = dataset.get_fitness(Ann(self))
-
-    """
-    def evaluate_shared_fitness(self, c1: float, c2: float, c3: float, species: List["Genotype"]):
-        self._shared_fitness = self.get_fitness() / sum([Genotype.calculate_compatibility(c1, c2, c3, self, genotype)
-                                                         for genotype in species if genotype != self])
-    """
-
-    def evaluate_shared_fitness(self, c1: float, c2: float, c3: float, t: float, species: List["Genotype"]):
-        self._shared_fitness = self.get_fitness() / sum([
-            1 if Genotype.calculate_compatibility(c1, c2, c3, self, other) < t else 0 for other in species])
-
-    def get_shared_fitness(self):
-        return self._shared_fitness
 
     def get_fitness(self) -> float:
         return self._fitness
-
-    def _create_node(self, input_node: int, output_node: int) -> Node:
-        return Node(Genotype.__node_id_map.get_id(input_node, output_node, self.nodes), NodeType.HIDDEN)
-
-    def _create_edge(self, input_node: int, output_node: int, **kwargs) -> Edge:
-        weight = kwargs.get("weight", None)
-        return Edge(input_node, output_node, weight=weight)
-
-    def _add_node(self, node: Node):
-        self.nodes.append(node)
-
-    def _add_edge(self, edge: Edge, **kwargs):
-        innovation = kwargs.get("innovation", None)
-        edge.innovation = Edge.next_innovation_value() if innovation is None else innovation
-        self.edges.append(edge)
 
     def _is_new_edge_recurrent(self, input_node: int, output_node: int) -> bool:
         # Search for path from output_node to input_node
@@ -174,34 +124,48 @@ class Genotype:
         return nodes
 
     def __str__(self):
-        return str(id(self)) + "\n" + str(self.nodes) + "\n" + str(self.edges)
+        return str(self.get_fitness()) + "\n" + \
+               str(len(self.nodes)) + " " + str(self.nodes) + "\n" + \
+               str(len(self.edges)) + " " + str(self.edges)
 
     @staticmethod
-    def crossover(better: "Genotype", worse: "Genotype") -> "Genotype":
-        if worse.get_shared_fitness() > better.get_shared_fitness():
-            tmp = worse
-            worse = better
-            better = tmp
+    def crossover(mom: "Genotype", dad: "Genotype") -> "Genotype":
+        better = mom if mom.get_fitness() > dad.get_fitness() else dad
+        worse = mom if mom.get_fitness() <= dad.get_fitness() else dad
 
         genotype = Genotype()
 
         for node in better.nodes:
             genotype.nodes.append(Node(node.id, node.type))
 
-        for g0 in better.edges:
-            selected = g0
-            for g1 in worse.edges:
-                if g0.innovation == g1.innovation:
-                    if np.random.uniform(0, 1) < 0.5:
-                        selected = g1
-                    break
+        better_counter, worse_counter = 0, 0
 
+        while better_counter < len(better.edges) and worse_counter < len(worse.edges):
+            skip = False
+            b = better.edges[better_counter]
+            w = worse.edges[worse_counter]
+            selected = b
+
+            if b.innovation == w.innovation:
+                better_counter += 1
+                worse_counter += 1
+                if np.random.uniform(0, 1) < 0.5:
+                    selected = w
+            elif b.innovation < w.innovation:
+                better_counter += 1
+            elif b.innovation > w.innovation:
+                worse_counter += 1
+                skip = True
+
+            if not skip:
+                enabled = selected.enabled if selected.enabled else (np.random.uniform(0, 1) < 0.25)
+                genotype.edges.append(
+                    Edge(selected.input, selected.output, enabled, selected.innovation, weight=selected.weight))
+
+        for i in range(better_counter, len(better.edges)):
+            selected = better.edges[i]
             genotype.edges.append(
-                Edge(selected.input,
-                     selected.output,
-                     weight=selected.weight,
-                     enabled=selected.enabled if selected.enabled else (np.random.uniform(0, 1) < 0.25),
-                     innovation=selected.innovation))
+                Edge(selected.input, selected.output, selected.enabled, selected.innovation, weight=selected.weight))
 
         return genotype
 
@@ -220,38 +184,38 @@ class Genotype:
             float: Compatibility for g0 and g1
         """
         if g0.edges[-1].innovation < g1.edges[-1].innovation:
-            tmp = g0
-            g1 = g0
-            g0 = tmp
+            g0, g1 = g1, g0
 
         g0_n = len(g0.edges)
         g1_n = len(g1.edges)
-
-        n = 1 if g0_n < 20 and g1_n < 20 else max(g0_n, g1_n)
-        # n = max(g0_n, g1_n)
+        n = 1 if g0_n < 20 and g1_n < 20 else max(g0_n, g1_n)  # Number of genes in larger genotype, 1 if small genotype
 
         m = 0  # Matching genes
-        e = 0  # Excess genes
         d = 0  # Disjoint genes
         w = 0.0  # Weight difference of matching genes
 
-        g1_max_innovation = g1.edges[-1].innovation
+        g0_counter, g1_counter = 0, 0
 
-        for g0_genome in g0.edges:
-            gene_found = False
-            for g1_genome in g1.edges:
-                if g0_genome.innovation == g1_genome.innovation:
-                    gene_found = True
-                    w += np.abs(g0_genome.weight - g1_genome.weight)
-                    m += 1
-                    break
+        while g0_counter < len(g0.edges) and g1_counter < len(g1.edges):
+            g0_edge = g0.edges[g0_counter]
+            g1_edge = g1.edges[g1_counter]
 
-            if not gene_found:
-                if g0_genome.innovation < g1_max_innovation:
-                    d += 1
-                else:
-                    e += 1
+            if g0_edge.innovation == g1_edge.innovation:
+                g0_counter += 1
+                g1_counter += 1
+                m += 1
+                w += abs(g0_edge.weight - g1_edge.weight)
+            elif g0_edge.innovation < g1_edge.innovation:
+                g0_counter += 1
+                d += 1
+            elif g0_edge.innovation > g1_edge.innovation:
+                g1_counter += 1
+                d += 1
 
-        d += len(g1.edges) - m
+        e = len(g0.edges) - g0_counter  # Excess genes
 
         return c1 * e / n + c2 * d / n + c3 * w / m
+        # return c1 * e / n + c2 * d / n + c3 * (w / m) / n
+
+    def __repr__(self):
+        return str(self.get_fitness())
