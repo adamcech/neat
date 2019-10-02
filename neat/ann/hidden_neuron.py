@@ -16,10 +16,12 @@ class HiddenNeuron(Neuron):
         self._ann = ann
         self.connections = []  # type: List[Connection]
 
+    # Steepened sigmoid for XOR
     def get_output(self):
         if self._done != self._ann.current_final_state:
             self._done = not self._done
-            self._output = 1/(1 + np.power(np.e, -4.9 * sum([connection.forward() for connection in self.connections])))
-            # self._output = 1 / (1 + np.power(np.e, -sum([connection.forward() for connection in self.connections])))
+            summation = sum([connection.forward() for connection in self.connections])
+            self._output = 0 if summation < -144 else 1/(1 + np.power(np.e, -4.9 * summation))
+            # self._output = 1/(1 + np.power(np.e, -sum([connection.forward() for connection in self.connections])))
 
         return self._output

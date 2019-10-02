@@ -21,7 +21,7 @@ class Genotype:
     def __init__(self):
         self.nodes = []  # type: List[Node]
         self.edges = []  # type: List[Edge]
-        self._fitness = 0
+        self.fitness = 0
 
     @staticmethod
     def initial_genotype(dataset: Dataset) -> "Genotype":
@@ -97,10 +97,7 @@ class Genotype:
                 break
 
     def calculate_fitness(self, dataset: Dataset):
-        self._fitness = dataset.get_fitness(Ann(self))
-
-    def get_fitness(self) -> float:
-        return self._fitness
+        self.fitness = dataset.get_fitness(Ann(self))
 
     def _is_new_edge_recurrent(self, input_node: int, output_node: int) -> bool:
         # Search for path from output_node to input_node
@@ -124,14 +121,14 @@ class Genotype:
         return nodes
 
     def __str__(self):
-        return str(self.get_fitness()) + "\n" + \
+        return str(self.fitness) + "\n" + \
                str(len(self.nodes)) + " " + str(self.nodes) + "\n" + \
                str(len(self.edges)) + " " + str(self.edges)
 
     @staticmethod
     def crossover(mom: "Genotype", dad: "Genotype") -> "Genotype":
-        better = mom if mom.get_fitness() > dad.get_fitness() else dad
-        worse = mom if mom.get_fitness() <= dad.get_fitness() else dad
+        better = mom if mom.fitness > dad.fitness else dad
+        worse = mom if mom.fitness <= dad.fitness else dad
 
         genotype = Genotype()
 
@@ -170,19 +167,7 @@ class Genotype:
         return genotype
 
     @staticmethod
-    def calculate_compatibility(c1, c2, c3, g0: "Genotype", g1: "Genotype"):
-        """Calculates compatibility between two genotypes
-
-        Args:
-            c1 (float): Excess Genes Importance
-            c2 (float): Disjoint Genes Importance
-            c3 (float): Weights difference Importance
-            g0 (Genotype): Compatibility Threshold
-            g1 (Genotype): Population size
-
-        Returns:
-            float: Compatibility for g0 and g1
-        """
+    def is_compatible(neat: "Neat", g0: "Genotype", g1: "Genotype"):
         if g0.edges[-1].innovation < g1.edges[-1].innovation:
             g0, g1 = g1, g0
 
@@ -214,8 +199,8 @@ class Genotype:
 
         e = len(g0.edges) - g0_counter  # Excess genes
 
-        return c1 * e / n + c2 * d / n + c3 * w / m
+        return neat.t > neat.c1 * e / n + neat.c2 * d / n + neat.c3 * w / m
         # return c1 * e / n + c2 * d / n + c3 * (w / m) / n
 
     def __repr__(self):
-        return str(self.get_fitness())
+        return str(self.fitness)

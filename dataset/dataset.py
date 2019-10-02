@@ -1,6 +1,3 @@
-from dataset.dataset_item import DatasetItem
-
-
 class Dataset:
     """Abstract class for datasets implementation
     """
@@ -10,11 +7,8 @@ class Dataset:
     def get_output_size(self) -> int:
         raise NotImplementedError()
 
-    def get_dataset_size(self) -> int:
-        raise NotImplementedError()
-
     def get_fitness(self, ann) -> float:
         raise NotImplementedError()
 
-    def next_item(self) -> DatasetItem:
+    def render(self, ann, **kwargs) -> None:
         raise NotImplementedError()

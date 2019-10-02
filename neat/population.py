@@ -1,6 +1,8 @@
 import random
-
+import multiprocessing as mp
 import numpy as np
+import copy
+
 from typing import List
 
 from dataset.dataset import Dataset
@@ -26,20 +28,17 @@ class Population:
         dataset (Dataset): Dataset to use
     """
 
-    def __init__(self, c1: float, c2: float, c3: float, t: float, size: int, dataset: Dataset):
-        self._size = size
+    def __init__(self, neat: "Neat"):
+        self.neat = neat
+        self._size = neat.population_size
 
-        self._c1 = c1
-        self._c2 = c2
-        self._c3 = c3
-        self._t = t
-
-        initial_genotype = Genotype.initial_genotype(dataset)
-        self._population = [initial_genotype.initial_copy() for _ in range(self._size)]  # type: List[Genotype]
-
+        self._champs = []
         self._species = []  # type: List[Species]
 
-        self.evaluate(dataset)
+        initial_genotype = Genotype.initial_genotype(neat.dataset)
+        self._population = [initial_genotype.initial_copy() for _ in range(self._size)]  # type: List[Genotype]
+
+        self.evaluate(neat.dataset)
 
     def speciate(self):
         for species in self._species:
@@ -48,8 +47,7 @@ class Population:
         for genotype in self._population:
             species_found = False
             for species in self._species:
-                if self._t > Genotype.calculate_compatibility(self._c1, self._c2, self._c3, genotype,
-                                                              species.representative):
+                if Genotype.is_compatible(self.neat, genotype, species.representative):
                     species.add_member(genotype)
                     species_found = True
                     break
@@ -57,7 +55,7 @@ class Population:
             if not species_found:
                 self._species.append(Species(genotype))
 
-        # Has to be calculated with ALL members before removing worst
+        # calculated with ALL members before removing worst
         for species in self._species:
             species.evaluate_fitness()
 
@@ -69,6 +67,7 @@ class Population:
         self._species = [species for species in self._species if len(species.members) > 1]
 
     def crossover(self):
+        self._champs = []
         new_pop = []
 
         species_fitness = [species.get_fitness() for species in self._species]
@@ -77,6 +76,7 @@ class Population:
         for species in self._species:
             slots = int(species.get_fitness() / species_fitness_sum * self._size) - 1
             new_pop.append(species.get_champ())
+            self._champs.append(species.get_champ())
 
             for _ in range(slots):
                 if len(self._species) == 1 or np.random.uniform(0, 1) > 0.001:
@@ -95,7 +95,7 @@ class Population:
 
     def mutate_weights(self):
         for genotype in self._population:
-            if np.random.uniform() < self.__mutate_weights_prop:
+            if np.random.uniform() < self.__mutate_weights_prop and genotype not in self._champs:
                 for edge in genotype.edges:
                     if edge.enabled:
                         if np.random.uniform(0, 1) < 0.9:
@@ -105,18 +105,18 @@ class Population:
 
     def mutate_add_node(self):
         for genotype in self._population:
-            if np.random.uniform(0, 1) < self.__mutate_add_node_prop:
+            if np.random.uniform() < self.__mutate_add_node_prop and genotype not in self._champs:
                 genotype.mutate_add_node()
 
     def mutate_add_edge(self):
         for genotype in self._population:
-            if np.random.uniform(0, 1) < self.__mutate_add_edge_prop:
+            if np.random.uniform() < self.__mutate_add_edge_prop and genotype not in self._champs:
                 genotype.mutate_add_edge()
 
     def get_best(self) -> Genotype:
         best_fitness = 0
         for i in range(1, len(self._population)):
-            if self._population[i].get_fitness() > self._population[best_fitness].get_fitness():
+            if self._population[i].fitness > self._population[best_fitness].fitness:
                 best_fitness = i
 
         return self._population[best_fitness]
@@ -135,5 +135,47 @@ class Population:
                 rand -= fitness[i]
 
     def evaluate(self, dataset: Dataset):
-        for genotype in self._population:
+        process_count = 3
+        process_list = []  # type: List[mp.Process]
+        process_out_list = []
+
+        step = int(len(self._population) / process_count)
+
+        # noinspection PyBroadException
+        try:
+            f = -step
+            for i in range(process_count):
+                f += step
+                t = f + step if i + 1 < process_count else len(self._population)
+                process_out = mp.Queue()
+                process_out_list.append(process_out)
+
+                process_list.append(
+                    mp.Process(target=self.eval_single,
+                               args=(self._population[f:t], copy.deepcopy(dataset), process_out)))
+
+            for p in process_list:
+                p.start()
+
+            for p in process_list:
+                p.join()
+
+            f = -step
+            for i in range(process_count):
+                out_list = process_out_list[i]
+                f += step
+                t = f + step if i + 1 < process_count else len(self._population)
+
+                for j in range(f, t):
+                    self._population[j].fitness = out_list.get()
+        except Exception:
+            print("Multi process evaluation failed")
+            for genotype in self._population:
+                genotype.calculate_fitness(dataset)
+
+    @staticmethod
+    def eval_single(population: List[Genotype], dataset: Dataset, process_out: mp.Queue):
+        for genotype in population:
             genotype.calculate_fitness(dataset)
+            print("Fitness: " + str(genotype.fitness))
+            process_out.put(genotype.fitness)

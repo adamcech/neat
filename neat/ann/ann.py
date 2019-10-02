@@ -1,4 +1,6 @@
-from typing import List
+from typing import List, Union
+
+import numpy
 
 from neat.ann.connection import Connection
 from neat.ann.neuron import Neuron
@@ -23,7 +25,7 @@ class Ann:
             elif node.is_output():
                 self._outputs.append(HiddenNeuron(node.id, self))
 
-        for edge in genotype.edges:
+        for edge in [edge for edge in genotype.edges if edge.enabled]:
             for l in [self._hidden, self._outputs]:
                 for output_neuron in l:
                     if edge.output == output_neuron.id:
@@ -33,7 +35,7 @@ class Ann:
                                     output_neuron.connections.append(Connection(edge.weight, input_neuron))
                                     break
 
-    def calculate(self, item_input: List[float]) -> List[float]:
+    def calculate(self, item_input: Union[numpy.ndarray, List[float]]) -> List[float]:
         self.current_final_state = not self.current_final_state
 
         for i in range(len(self._inputs)):

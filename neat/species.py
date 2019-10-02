@@ -22,7 +22,7 @@ class Species:
         self.members.clear()
 
     def get_champ(self) -> "Genotype":
-        return self.members[np.argsort([member.get_fitness() for member in self.members])[-1]]
+        return self.members[np.argsort([member.fitness for member in self.members])[-1]]
 
     def get_fitness(self) -> float:
         return self._fitness
@@ -31,10 +31,10 @@ class Species:
         if len(self.members) == 0:
             self._fitness = 0
         else:
-            self._fitness = sum(member.get_fitness() for member in self.members) / len(self.members)
+            self._fitness = sum(member.fitness for member in self.members) / len(self.members)
 
     def remove_worst(self, percentage: float):
-        sort_indices = np.argsort([member.get_fitness() for member in self.members])[::-1]
+        sort_indices = np.argsort([member.fitness for member in self.members])[::-1]
         self.members = [self.members[sort_indices[i]] for i in range(int(len(self.members) * (1 - percentage)))]
 
     def __repr__(self):
