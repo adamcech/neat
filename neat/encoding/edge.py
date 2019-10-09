@@ -17,7 +17,7 @@ class Edge:
         self.weight = np.random.uniform(-1, 1)
 
     def mutate_perturbate_weight(self):
-        self.weight += np.random.normal(0.0, 1.0)
+        self.weight += np.random.normal(0, 1)
 
         if self.weight > 8:
             self.weight = 8

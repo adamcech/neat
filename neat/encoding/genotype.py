@@ -10,6 +10,7 @@ from neat.ann.ann import Ann
 from neat.encoding.edge import Edge
 from neat.encoding.node import Node
 from neat.encoding.node_type import NodeType
+from neat.encoding.weight_map import WeightMap
 
 
 class Genotype:
@@ -21,7 +22,8 @@ class Genotype:
     def __init__(self):
         self.nodes = []  # type: List[Node]
         self.edges = []  # type: List[Edge]
-        self.fitness = 0
+        self.fitness = 0  # float
+        self.score = 0  # float
 
     @staticmethod
     def initial_genotype(dataset: Dataset) -> "Genotype":
@@ -126,7 +128,7 @@ class Genotype:
                str(len(self.edges)) + " " + str(self.edges)
 
     @staticmethod
-    def crossover(mom: "Genotype", dad: "Genotype") -> "Genotype":
+    def crossover(mom: "Genotype", dad: "Genotype", w_map: "WeightMap", ew_map: "WeightMap") -> "Genotype":
         better = mom if mom.fitness > dad.fitness else dad
         worse = mom if mom.fitness <= dad.fitness else dad
 
@@ -155,16 +157,36 @@ class Genotype:
                 skip = True
 
             if not skip:
-                enabled = selected.enabled if selected.enabled else (np.random.uniform(0, 1) < 0.25)
-                genotype.edges.append(
-                    Edge(selected.input, selected.output, enabled, selected.innovation, weight=selected.weight))
+                genotype._add_edge_from_crossover(selected, w_map, ew_map)
 
         for i in range(better_counter, len(better.edges)):
-            selected = better.edges[i]
-            genotype.edges.append(
-                Edge(selected.input, selected.output, selected.enabled, selected.innovation, weight=selected.weight))
+            genotype._add_edge_from_crossover(better.edges[i], w_map, ew_map)
 
         return genotype
+
+    def _add_edge_from_crossover(self, selected: Edge, w_map: WeightMap, ew_map: WeightMap):
+        normal_weights = w_map.get_edge_weights(selected.innovation)
+        best_weights = ew_map.get_edge_weights(selected.innovation)
+
+        weight = selected.weight + np.random.normal(0, 0.5)
+
+        if normal_weights is not None and best_weights is not None:
+            if len(best_weights) >= 1 and len(normal_weights) >= 2:
+                f = 0.1
+                r = random.sample(normal_weights, 2)
+                b = random.sample(best_weights, 1)[0]
+                r0, r1 = r[0], r[1]
+                weight = selected.weight + (b - selected.weight) * f + (r0 - r1) * f
+                # weight = selected.weight + (b - selected.weight) * f
+
+        enabled = selected.enabled if selected.enabled else (np.random.uniform(0, 1) < 0.25)
+
+        if abs(weight) > 8:
+            weight = 8
+        if weight < -8:
+            weight = -8
+
+        self.edges.append(Edge(selected.input, selected.output, enabled, selected.innovation, weight=weight))
 
     @staticmethod
     def is_compatible(neat: "Neat", g0: "Genotype", g1: "Genotype"):

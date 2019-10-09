@@ -1,8 +1,10 @@
 import gym
-env = gym.make('Asteroids-ram-v0')
 
-print(env.action_space)       # 9
-print(env.observation_space)  # 128
+env = gym.make('LunarLander-v2')
+
+print("Observation (input):   " + str(env.observation_space))  # 128
+print("Actions (outputs):     " + str(env.action_space))       # 9
+
 
 for i_episode in range(20):
     observation = env.reset()

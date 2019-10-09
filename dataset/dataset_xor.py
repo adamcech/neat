@@ -39,7 +39,7 @@ class DatasetXor(Dataset):
     def get_dataset(self):
         return self._dataset
 
-    def render(self, ann) -> None:
+    def render(self, ann: "Ann", **kwargs) -> None:
         for item in self._dataset:
             result = ann.calculate(item.input)
             print(str(item) + "; Result " + str(result))

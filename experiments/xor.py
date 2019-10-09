@@ -13,7 +13,7 @@ generations = 200
 dataset = DatasetXor()
 
 neat = Neat(c1, c2, c3, t, population_size, dataset)
-neat.next_generations(generations, output=True)
+neat.next_generations(generations)
 
 genotype = neat.get_best_genotype()
 print(genotype)
