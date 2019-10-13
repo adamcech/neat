@@ -18,7 +18,7 @@ class Ann:
         self.current_final_state = False
 
         for node in genotype.nodes:
-            if node.is_input():
+            if node.is_input() or node.is_bias():
                 self._inputs.append(Neuron(node.id))
             elif node.is_hidden():
                 self._hidden.append(HiddenNeuron(node.id, self))

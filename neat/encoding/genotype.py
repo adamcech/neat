@@ -10,7 +10,6 @@ from neat.ann.ann import Ann
 from neat.encoding.edge import Edge
 from neat.encoding.node import Node
 from neat.encoding.node_type import NodeType
-from neat.encoding.weight_map import WeightMap
 
 
 class Genotype:
@@ -33,12 +32,25 @@ class Genotype:
         for i in range(dataset.get_input_size()):
             genotype.nodes.append(Node(Genotype.__innovation_map.next_innovation(), NodeType.INPUT))
 
+        # Adding bias nodes
+        for i in range(dataset.get_bias_size()):
+            genotype.nodes.append(Node(Genotype.__innovation_map.next_innovation(), NodeType.BIAS))
+
         # Adding output nodes
         for i in range(dataset.get_output_size()):
             genotype.nodes.append(Node(Genotype.__innovation_map.next_innovation(), NodeType.OUTPUT))
 
-        # Connecting inputs to outputs
-        for input_node in [node for node in genotype.nodes if node.is_input()]:
+        """
+        # Connecting bias to outputs
+        for bias_node in [node for node in genotype.nodes if node.is_bias()]:
+            for output_node in [node for node in genotype.nodes if node.is_output()]:
+                genotype.edges.append(
+                    Edge(bias_node.id, output_node.id, True,
+                         Genotype.__innovation_map.get_edge_innovation(bias_node.id, output_node.id)))
+        """
+
+        # Connecting inputs and bias to outputs
+        for input_node in [node for node in genotype.nodes if node.is_input() or node.is_bias()]:
             for output_node in [node for node in genotype.nodes if node.is_output()]:
                 genotype.edges.append(
                     Edge(input_node.id, output_node.id, True,
@@ -59,35 +71,24 @@ class Genotype:
         old_edge = random.sample(self.edges, 1)[0]  # type: Edge
         old_edge.enabled = False
 
-        new_node = Node(Genotype.__innovation_map.get_node_innovation(old_edge.input, old_edge.output, self.nodes),
-                        NodeType.HIDDEN)
-
-        new_edge = Edge(old_edge.input,
-                        new_node.id,
-                        True,
-                        Genotype.__innovation_map.get_edge_innovation(old_edge.input, new_node.id),
-                        weight=1)
-
-        original_edge = Edge(new_node.id,
-                             old_edge.output,
-                             True,
-                             Genotype.__innovation_map.get_edge_innovation(new_node.id, old_edge.output),
-                             weight=old_edge.weight)
+        new_node = Node(Genotype.__innovation_map.get_node_innovation(old_edge.input, old_edge.output, self.nodes), NodeType.HIDDEN)
+        new_edge = Edge(old_edge.input, new_node.id, True, Genotype.__innovation_map.get_edge_innovation(old_edge.input, new_node.id), weight=1)
+        original_edge = Edge(new_node.id, old_edge.output, True, Genotype.__innovation_map.get_edge_innovation(new_node.id, old_edge.output), weight=old_edge.weight)
 
         self.nodes.append(new_node)
         self.edges.append(new_edge)
         self.edges.append(original_edge)
 
     def mutate_add_edge(self):
-        for try_counter in range(0, 10):
+        for try_counter in range(0, 100):
             samples = random.sample(self.nodes, 2)
             input_node = samples[0]  # type: Node
             output_node = samples[1]  # type: Node
-            if (input_node.type == NodeType.OUTPUT or output_node.type == NodeType.INPUT) or \
-               (input_node.type == NodeType.INPUT and output_node.type == NodeType.INPUT) or \
-               (input_node.type == NodeType.OUTPUT and output_node.type == NodeType.OUTPUT) or \
-               any((edge.input == input_node.id and edge.output == output_node.id) or
-                   (edge.input == output_node.id and edge.output == input_node.id) for edge in self.edges):
+            if (input_node.is_output() or (output_node.is_input() or output_node.is_bias())) or \
+                    ((input_node.is_input() or input_node.is_bias()) and (output_node.is_input() or input_node.is_bias())) or \
+                    (input_node.is_output() and output_node.is_output()) or \
+                    any((edge.input == input_node.id and edge.output == output_node.id) or
+                        (edge.input == output_node.id and edge.output == input_node.id) for edge in self.edges):
                 continue
 
             if not self._is_new_edge_recurrent(input_node.id, output_node.id):
@@ -98,22 +99,22 @@ class Genotype:
                          Genotype.__innovation_map.get_edge_innovation(input_node.id, output_node.id)))
                 break
 
-    def calculate_fitness(self, dataset: Dataset):
-        self.fitness = dataset.get_fitness(Ann(self))
-
     def _is_new_edge_recurrent(self, input_node: int, output_node: int) -> bool:
         # Search for path from output_node to input_node
         # TODO better solution
-        visited = []
-        self._dfs(output_node, visited)
-        return input_node in visited
+        return input_node in self._dfs(output_node)
 
-    def _dfs(self, start_node: int, visited: List[int]):
+    def _dfs(self, input_node: int) -> List[int]:
+        visited = []
+        self._dfs_step(input_node, visited)
+        return visited
+
+    def _dfs_step(self, start_node: int, visited: List[int]):
         visited.append(start_node)
 
         for node in self._get_adjacent_nodes(start_node):
             if node not in visited:
-                self._dfs(node, visited)
+                self._dfs_step(node, visited)
 
     def _get_adjacent_nodes(self, node_id: int) -> List[int]:
         nodes = []
@@ -122,13 +123,16 @@ class Genotype:
                 nodes.append(edge.output)
         return nodes
 
+    def calculate_fitness(self, dataset: Dataset):
+        self.fitness = dataset.get_fitness(Ann(self))
+
     def __str__(self):
         return str(self.fitness) + "\n" + \
                str(len(self.nodes)) + " " + str(self.nodes) + "\n" + \
                str(len(self.edges)) + " " + str(self.edges)
 
     @staticmethod
-    def crossover(mom: "Genotype", dad: "Genotype", w_map: "WeightMap", ew_map: "WeightMap") -> "Genotype":
+    def crossover(mom: "Genotype", dad: "Genotype") -> "Genotype":
         better = mom if mom.fitness > dad.fitness else dad
         worse = mom if mom.fitness <= dad.fitness else dad
 
@@ -157,36 +161,15 @@ class Genotype:
                 skip = True
 
             if not skip:
-                genotype._add_edge_from_crossover(selected, w_map, ew_map)
+                genotype._add_edge_from_crossover(selected)
 
         for i in range(better_counter, len(better.edges)):
-            genotype._add_edge_from_crossover(better.edges[i], w_map, ew_map)
+            genotype._add_edge_from_crossover(better.edges[i])
 
         return genotype
 
-    def _add_edge_from_crossover(self, selected: Edge, w_map: WeightMap, ew_map: WeightMap):
-        normal_weights = w_map.get_edge_weights(selected.innovation)
-        best_weights = ew_map.get_edge_weights(selected.innovation)
-
-        weight = selected.weight + np.random.normal(0, 0.5)
-
-        if normal_weights is not None and best_weights is not None:
-            if len(best_weights) >= 1 and len(normal_weights) >= 2:
-                f = 0.1
-                r = random.sample(normal_weights, 2)
-                b = random.sample(best_weights, 1)[0]
-                r0, r1 = r[0], r[1]
-                weight = selected.weight + (b - selected.weight) * f + (r0 - r1) * f
-                # weight = selected.weight + (b - selected.weight) * f
-
-        enabled = selected.enabled if selected.enabled else (np.random.uniform(0, 1) < 0.25)
-
-        if abs(weight) > 8:
-            weight = 8
-        if weight < -8:
-            weight = -8
-
-        self.edges.append(Edge(selected.input, selected.output, enabled, selected.innovation, weight=weight))
+    def _add_edge_from_crossover(self, edge: Edge):
+        self.edges.append(Edge(edge.input, edge.output, edge.enabled, edge.innovation, weight=edge.weight))
 
     @staticmethod
     def is_compatible(neat: "Neat", g0: "Genotype", g1: "Genotype"):
@@ -222,7 +205,6 @@ class Genotype:
         e = len(g0.edges) - g0_counter  # Excess genes
 
         return neat.t > neat.c1 * e / n + neat.c2 * d / n + neat.c3 * w / m
-        # return c1 * e / n + c2 * d / n + c3 * (w / m) / n
 
     def __repr__(self):
         return str(self.fitness)

@@ -11,29 +11,26 @@ class GymClient(Dataset):
     def get_environment_name(self) -> str:
         raise NotImplementedError()
 
-    def is_discrete(self) -> bool:
-        raise NotImplementedError()
-
-    def get_inputs(self) -> int:
-        raise NotImplementedError()
-
-    def bias_nodes(self) -> int:
-        raise NotImplementedError()
-
-    def get_input_size(self) -> int:
-        return self.get_inputs() + self.bias_nodes()
-
-    def get_output_size(self) -> int:
-        raise NotImplementedError()
-
     def get_max_trials(self) -> int:
         raise NotImplementedError()
 
     def get_max_episodes(self) -> int:
         raise NotImplementedError()
 
+    def is_discrete(self) -> bool:
+        raise NotImplementedError()
+
+    def get_input_size(self) -> int:
+        raise NotImplementedError()
+
+    def get_bias_size(self) -> int:
+        raise NotImplementedError()
+
+    def get_output_size(self) -> int:
+        raise NotImplementedError()
+
     def _get_ann_action(self, ann: Ann, observation: np.ndarray) -> int:
-        output = ann.calculate(np.append(observation, [1 for _ in range(self.bias_nodes())]))
+        output = ann.calculate(np.append(observation, [1 for _ in range(self.get_bias_size())]))
         return output.index(max(output)) if self.is_discrete() else output
 
     def get_fitness(self, ann: Ann) -> float:
@@ -59,7 +56,7 @@ class GymClient(Dataset):
         loops = kwargs.get("loops", None)
         counter = 0
 
-        while self.is_rendering(loops, counter):
+        while True if loops is None else counter < loops:
             observation = env.reset()
             done = False
             score = 0
@@ -73,10 +70,3 @@ class GymClient(Dataset):
             counter += 1
 
         env.close()
-
-    @staticmethod
-    def is_rendering(loops, counter) -> bool:
-        if loops is None:
-            return True
-        else:
-            return counter < loops

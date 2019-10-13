@@ -4,6 +4,9 @@ class Dataset:
     def get_input_size(self) -> int:
         raise NotImplementedError()
 
+    def get_bias_size(self) -> int:
+        raise NotImplementedError()
+
     def get_output_size(self) -> int:
         raise NotImplementedError()
 

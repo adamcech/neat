@@ -6,16 +6,14 @@ import copy
 from typing import List
 
 from dataset.dataset import Dataset
-from neat.encoding.weight_map import WeightMap
 from neat.species import Species
 from neat.encoding.genotype import Genotype
 
 
 class Population:
-    __mutate_add_node_prop = 0.09
-    __mutate_add_edge_prop = 0.15
-    __mutate_weights_prop = 0.9
-    __interspecies_mating_prop = 0.001
+    __mutate_add_node_prop = 0.03
+    __mutate_add_edge_prop = 0.05
+
     __remove_percentage = 0.1
 
     """Population representation
@@ -65,13 +63,9 @@ class Population:
             species.remove_worst(Population.__remove_percentage)
 
         # Remove Extinct
-        self._species = [species for species in self._species if len(species.members) > 1]
+        self._species = [species for species in self._species if len(species.members) > 3]
 
     def crossover(self):
-        weight_map = WeightMap.init_from_population(self._population)
-        elite_weight_map = WeightMap.init_from_population(
-            [self._population[i] for i in range(len(self._population) - 1, int(len(self._population) * 0.9) - 1, -1)])
-
         self._species_champs = []
         new_pop = []
 
@@ -84,32 +78,19 @@ class Population:
             self._species_champs.append(species.get_champ())
 
             for _ in range(slots):
-                if len(self._species) == 1 or np.random.uniform(0, 1) > 0.001:
-                    parents = random.sample(species.members, 2)
-                    mom, dad = parents[0], parents[1]
-                else:
-                    other_species = species
-                    while other_species == species:
-                        other_species = random.sample(self._species, 1)[0]
-
-                    mom = random.sample(species.members, 1)[0]
-                    dad = random.sample(other_species.members, 1)[0]
-
-                new_pop.append(Genotype.crossover(mom, dad, weight_map, elite_weight_map))
+                parents = random.sample(species.members, 2)
+                new_pop.append(Genotype.crossover(parents[0], parents[1]))
 
         self._population = new_pop
 
-    """
     def mutate_weights(self):
         for genotype in self._population:
-            if np.random.uniform() < self.__mutate_weights_prop and genotype not in self._champs:
+            if np.random.uniform() < 0.8 and genotype not in self._species_champs:
                 for edge in genotype.edges:
-                    if edge.enabled:
-                        if np.random.uniform(0, 1) < 0.9:
-                            edge.mutate_perturbate_weight()
-                        else:
-                            edge.mutate_random_weight()
-    """
+                    if np.random.uniform() < 0.9:
+                        edge.mutate_perturbate()
+                    else:
+                        edge.mutate_random_weight()
 
     def mutate_add_node(self):
         for genotype in self._population:
@@ -184,9 +165,6 @@ class Population:
             for genotype in self._population:
                 genotype.calculate_fitness(dataset)
 
-        self._normalize_fitness()
-
-    def _normalize_fitness(self):
         m = min([genotype.fitness for genotype in self._population])
         m = abs(m) if m < 0 else 0
 
@@ -194,28 +172,8 @@ class Population:
             genotype.score = genotype.fitness
             genotype.fitness += m
 
-        """
-        Bug
-        sort_indices = np.argsort([p.fitness for p in self._population])
-        self._population = [self._population[sort_indices[i]] for i in range(len(self._population))]
-
-        for genotype in self._population:
-            genotype.score = genotype.fitness
-
-        f_sum = sum([abs(p.fitness) for p in self._population])
-        prev_dist = 0.0
-
-        for i in range(len(self._population) - 1):
-            prev_dist += abs(self._population[i].fitness - self._population[i + 1].fitness)
-            self._population[i].fitness = prev_dist / f_sum
-
-        self._population[-1].fitness = (prev_dist + abs(self._population[-1].fitness)) / f_sum
-        """
-
-
     @staticmethod
     def eval_single(population: List[Genotype], dataset: Dataset, process_out: mp.Queue):
         for genotype in population:
             genotype.calculate_fitness(dataset)
-            # print("Fitness: " + str(genotype.fitness))
             process_out.put(genotype.fitness)

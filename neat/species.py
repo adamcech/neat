@@ -38,4 +38,4 @@ class Species:
         self.members = [self.members[sort_indices[i]] for i in range(int(len(self.members) * (1 - percentage)))]
 
     def __repr__(self):
-        return "### Fitness: " + str(int(self.get_fitness())) + ", Members: " + str(len(self.members)) + " ###"
+        return "### Fitness: " + str(self.get_fitness()) + ", Members: " + str(len(self.members)) + " ###"
