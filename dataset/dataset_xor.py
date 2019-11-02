@@ -1,6 +1,5 @@
-from collections import Generator
-
 import numpy as np
+from typing import List
 
 from dataset.dataset import Dataset
 from dataset.dataset_item import DatasetItem
@@ -19,11 +18,10 @@ class DatasetXor(Dataset):
         xor01 = DatasetItem([0, 1], [1])
         xor10 = DatasetItem([1, 0], [1])
         xor11 = DatasetItem([1, 1], [0])
-        self._dataset = [xor00, xor01, xor10, xor11]
-
-        bias_input = [1 for _ in range(self.get_bias_size())]
+        self._dataset = [xor00, xor01, xor10, xor11]  # type: List[DatasetItem]
         for item in self._dataset:
-            item.input += bias_input
+            for _ in range(self.get_bias_size()):
+                item.input.append(1)
 
     def get_input_size(self) -> int:
         return 2
@@ -46,7 +44,7 @@ class DatasetXor(Dataset):
     def get_dataset(self):
         return self._dataset
 
-    def render(self, ann: "Ann", **kwargs) -> None:
+    def render(self, ann, **kwargs) -> None:
         for item in self._dataset:
             result = ann.calculate(item.input)
             print(str(item) + "; Result " + str(result))

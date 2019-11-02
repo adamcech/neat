@@ -3,25 +3,25 @@ import gym
 from gym_client.gym_client import GymClient
 
 
-class CartPoleClient(GymClient):
+class AcrobotClient(GymClient):
 
     def get_environment(self) -> gym.Env:
-        return gym.make("CartPole-v0")
+        return gym.make("Acrobot-v1")
 
     def get_max_trials(self) -> int:
-        return 10  # 100
+        return 2
 
     def get_max_episodes(self) -> int:
-        return 200
+        return 500
 
     def is_discrete(self) -> bool:
         return True
 
     def get_input_size(self) -> int:
-        return 4
+        return 6
 
     def get_bias_size(self) -> int:
         return 1
 
     def get_output_size(self) -> int:
-        return 2
+        return 3

@@ -40,6 +40,9 @@ def parse_genotype(nodes: str, edges: str) -> Genotype:
         edge_weight = float(params[2])
         genotype.edges.append(Edge(edge_input, edge_output, edge_enabled, edge_innovation, weight=edge_weight))
 
+    print(len(genotype.edges))
+    print(len(genotype.nodes))
+
     return genotype
 
 

@@ -1,5 +1,6 @@
 import gym
 import numpy as np
+from typing import List
 
 from dataset.dataset import Dataset
 from neat.ann.ann import Ann
@@ -8,7 +9,10 @@ from neat.ann.ann import Ann
 class GymClient(Dataset):
     """Abstract class for gym_client clients
     """
-    def get_environment_name(self) -> str:
+    def __init__(self):
+        self.__bias_input = [1 for _ in range(self.get_bias_size())]  # type: List[float]
+
+    def get_environment(self) -> gym.Env:
         raise NotImplementedError()
 
     def get_max_trials(self) -> int:
@@ -30,13 +34,13 @@ class GymClient(Dataset):
         raise NotImplementedError()
 
     def _get_ann_action(self, ann: Ann, observation: np.ndarray) -> int:
-        output = ann.calculate(np.append(observation, [1 for _ in range(self.get_bias_size())]))
+        output = ann.calculate(np.append(observation, self.__bias_input))
         return output.index(max(output)) if self.is_discrete() else output
 
     def get_fitness(self, ann: Ann) -> float:
         score = 0.0
 
-        env = gym.make(self.get_environment_name())
+        env = self.get_environment()
 
         for trials in range(self.get_max_trials()):
             observation = env.reset()
@@ -51,7 +55,7 @@ class GymClient(Dataset):
         return score / self.get_max_trials()
 
     def render(self, ann: Ann, **kwargs):
-        env = gym.make(self.get_environment_name())
+        env = self.get_environment()
 
         loops = kwargs.get("loops", None)
         counter = 0
@@ -70,3 +74,8 @@ class GymClient(Dataset):
             counter += 1
 
         env.close()
+
+    def get_env_info(self):
+        env = self.get_environment()
+        print("Observation (input):   " + str(env.observation_space))
+        print("Actions (outputs):     " + str(env.action_space))
