@@ -12,7 +12,12 @@ class Species:
     __extinct_size = 2
     __dying_size = 5
 
+    __id_counter = 1
+
     def __init__(self, representative: "Genotype"):
+        self.id = Species.__id_counter
+        Species.__id_counter += 1
+
         self.representative = representative
         self.members = []  # type: List["Genotype"]
         self.compatibility = []  # type: List[float]

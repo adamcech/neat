@@ -1,9 +1,9 @@
 import time
+from typing import List
 
 from dataset.dataset import Dataset
-from neat.ann.ann import Ann
-from neat.encoding.genotype import Genotype
 from neat.population import Population
+from neat.observers.abstract_observer import AbstractObserver
 
 
 class Neat:
@@ -23,41 +23,25 @@ class Neat:
         self.c2 = c2
         self.c3 = c3
         self.t = t
-        self.population_size = population_size
+
         self.dataset = dataset
+
+        self.population_size = population_size
         self._population = Population(self)
 
-        self.best_genotype = None
+        self.generation = 0
 
-    def next_generations(self, generations: int):
-        for i in range(1, generations + 1):
+        self.observers = []  # type: List[AbstractObserver]
+
+    def next_generations(self, generations: int) -> None:
+        max_generation = self.generation + generations
+        while self.generation < max_generation:
+            self._notify_start_generation()
             self._next_generation()
+            self._notify_end_generation()
+            self.generation += 1
 
-            curr_best = self._population.get_best()
-
-            if self.best_genotype is None:
-                self.best_genotype = curr_best
-
-            self.best_genotype.calculate_fitness(self.dataset)
-            if curr_best.score > self.best_genotype.score:
-                self.best_genotype = curr_best.deepcopy()
-
-            print(str(i) + ":\t\t" + str(self._population.grow_rate) + "\t\t" + str(sum(self._population.compatibility) / len(self._population.compatibility)) + "\t\t" + str(self._population.get_best().score) + " \t\t" + str(
-                self._population.get_avg_score()) + " \t\t" + str(
-                self.get_best_genotype().score) + "; \tSpecies: " + str(
-                len(self._population.get_species())) + " " + str(self._population.get_species()))
-
-            if i % 25 == 0:
-                rand = self._population.get_random()
-                print(self.get_best_genotype())
-                print(self._population.get_best())
-                print(rand)
-
-                self.dataset.render(Ann(self.get_best_genotype()), loops=1)
-                self.dataset.render(Ann(self._population.get_best()), loops=1)
-                self.dataset.render(Ann(rand), loops=1)
-
-    def _next_generation(self):
+    def _next_generation(self) -> None:
         self._population.speciate()
         self._population.crossover()
 
@@ -69,5 +53,13 @@ class Neat:
 
         self._population.evaluate(self.dataset)
 
-    def get_best_genotype(self) -> Genotype:
-        return self.best_genotype
+    def add_observer(self, reporter: AbstractObserver) -> None:
+        self.observers.append(reporter)
+
+    def _notify_start_generation(self):
+        for observer in self.observers:
+            observer.start_generation(self.generation)
+
+    def _notify_end_generation(self):
+        for observer in self.observers:
+            observer.end_generation(self._population)

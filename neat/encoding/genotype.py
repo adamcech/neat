@@ -75,7 +75,7 @@ class Genotype:
             if old_edge.input in biases_id:
                 continue
 
-            # old_edge.enabled = False
+            old_edge.enabled = False
 
             new_node = Node(Genotype.__innovation_map.get_node_innovation(old_edge.input, old_edge.output, self.nodes), NodeType.HIDDEN)
             new_edge = Edge(old_edge.input, new_node.id, True, Genotype.__innovation_map.get_edge_innovation(old_edge.input, new_node.id), weight=1)

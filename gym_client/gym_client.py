@@ -39,7 +39,6 @@ class GymClient(Dataset):
 
     def get_fitness(self, ann: Ann) -> float:
         score = 0.0
-
         env = self.get_environment()
 
         for trials in range(self.get_max_trials()):
@@ -51,7 +50,6 @@ class GymClient(Dataset):
                     break
 
         env.close()
-
         return score / self.get_max_trials()
 
     def render(self, ann: Ann, **kwargs):

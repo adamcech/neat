@@ -50,7 +50,7 @@ def parse_ann(nodes: str, edges: str) -> Ann:
     return Ann(parse_genotype(edges, nodes))
 
 
-def visualize_genotype(genotype: Genotype):
+def visualize_genotype(genotype: Genotype, save_path=None, show=False):
     G = nx.MultiDiGraph()
 
     for node in genotype.nodes:
@@ -117,4 +117,10 @@ def visualize_genotype(genotype: Genotype):
 
     nx.draw(G, pos=pos, node_size=50, with_labels=False, node_color=node_color, line_color='grey', linewidths=0,
             width=0.1)
-    plt.show()
+
+    if show:
+        plt.show()
+
+    if save_path is not None:
+        plt.savefig(save_path)
+        plt.close()
