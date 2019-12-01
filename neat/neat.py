@@ -1,7 +1,9 @@
+import pickle
 import time
 from typing import List
 
 from dataset.dataset import Dataset
+from neat.observers.autosave_observer import AutosaveObserver
 from neat.population import Population
 from neat.observers.abstract_observer import AbstractObserver
 
@@ -27,7 +29,7 @@ class Neat:
         self.dataset = dataset
 
         self.population_size = population_size
-        self._population = Population(self)
+        self.population = Population(self)
 
         self.generation = 0
 
@@ -42,19 +44,20 @@ class Neat:
             self.generation += 1
 
     def _next_generation(self) -> None:
-        self._population.speciate()
-        self._population.crossover()
+        self.population.speciate()
+        self.population.crossover()
+        self.population.mutate_weights()
+        self.population.mutate_topology()
+        self.population.evaluate(self.dataset)
 
-        self._population.mutate_weights()
-        self._population.mutate_topology()
+    def add_observer(self, observer: AbstractObserver) -> None:
+        self.observers.append(observer)
 
-        # self._population.mutate_add_edge()
-        # self._population.mutate_add_node()
+        new_observers = [observer for observer in self.observers if type(observer) == AutosaveObserver]
+        for observer in [observer for observer in self.observers if type(observer) != AutosaveObserver]:
+            new_observers.append(observer)
 
-        self._population.evaluate(self.dataset)
-
-    def add_observer(self, reporter: AbstractObserver) -> None:
-        self.observers.append(reporter)
+        self.observers = new_observers
 
     def _notify_start_generation(self):
         for observer in self.observers:
@@ -62,4 +65,10 @@ class Neat:
 
     def _notify_end_generation(self):
         for observer in self.observers:
-            observer.end_generation(self._population)
+            observer.end_generation(self)
+
+    @staticmethod
+    def open(path: str) -> "Neat":
+        with open(path, 'rb') as file:
+            neat = pickle.load(file)
+        return neat

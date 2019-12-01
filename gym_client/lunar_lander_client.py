@@ -12,7 +12,7 @@ class LunarLanderClient(GymClient):
         return True
 
     def get_max_trials(self) -> int:
-        return 2
+        return 3
 
     def get_max_episodes(self) -> int:
         return 500

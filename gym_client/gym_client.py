@@ -1,6 +1,6 @@
 import gym
 import numpy as np
-from typing import List
+from typing import List, Tuple
 
 from dataset.dataset import Dataset
 from neat.ann.ann import Ann
@@ -11,12 +11,16 @@ class GymClient(Dataset):
     """
     def __init__(self):
         self.__bias_input = [1 for _ in range(self.get_bias_size())]  # type: List[float]
+        self._max_trials = None
 
     def get_environment(self) -> gym.Env:
         raise NotImplementedError()
 
     def get_max_trials(self) -> int:
         raise NotImplementedError()
+
+    def set_max_trials(self, max_trials: int) -> None:
+        self._max_trials = max_trials
 
     def get_max_episodes(self) -> int:
         raise NotImplementedError()
@@ -59,9 +63,7 @@ class GymClient(Dataset):
         counter = 0
 
         while True if loops is None else counter < loops:
-            observation = env.reset()
-            done = False
-            score = 0
+            observation, done, score = env.reset(), False, 0
             while not done:
                 env.render()
                 observation, reward, done, info = env.step(self._get_ann_action(ann, observation))

@@ -2,7 +2,6 @@ import math
 import random
 import multiprocessing as mp
 import numpy as np
-import copy
 import time
 
 
@@ -22,9 +21,9 @@ class Population:
     __mutate_weights_perturbate = 0.9
     __mutate_weights_shift = 0.05
 
-    __remove_percentage = 0.1
+    __remove_percentage = 0.2
 
-    __stagnation_time = 100
+    __stagnation_time = 40
 
     """Population representation
 
@@ -51,17 +50,11 @@ class Population:
 
         self.evaluate(neat.dataset)
 
-        self._grow_rate = 0.1
-        self.max_species = 8  # int(self._size / 25) if self._size > 25 else -1
+        self._topology_grow_rate = 0.1
+        self.max_species = 6  # int(self._size / 25) if self._size > 25 else -1
         self._compatibility = []
 
-        self.elitism = 0.3
-
-    def get_compatibility(self) -> float:
-        return sum(self._compatibility) / len(self._compatibility)
-
-    def get_grow_rate(self) -> float:
-        return self._grow_rate
+        self.species_elitism = 10
 
     def speciate(self):
         for species in self._species:
@@ -69,15 +62,27 @@ class Population:
 
         for genotype in self._population:
             species_found = False
-            for species in self._species:
-                is_compatible, compatibility = Genotype.is_compatible(self.neat, genotype, species.representative)
+            best_species = -1
+            best_compatibility = 0
+            for i in range(len(self._species)):
+                is_compatible, compatibility = Genotype.is_compatible(self.neat, genotype, self._species[i].representative)
                 if is_compatible:
-                    species.add_member(genotype, compatibility)
                     species_found = True
-                    break
+                    if compatibility > best_compatibility:
+                        best_compatibility = compatibility
+                        best_species = i
 
-            if not species_found:
+            if species_found:
+                self._species[best_species].add_member(genotype, best_compatibility)
+            else:
                 self._species.append(Species(genotype))
+
+        self._species = [species for species in self._species if not species.is_empty()]
+
+        """
+        while self.specie_overlay():
+            pass
+        """
 
         # calculated with ALL members before removing worst
         for species in self._species:
@@ -114,77 +119,75 @@ class Population:
             for genotype_compatibility in species.compatibility:
                 self._compatibility.append(genotype_compatibility)
 
-        # Population stagnation
-        if len(self._stagnation_history) == self.__stagnation_time:
-            if max(self._stagnation_history) == self._stagnation_history[0]:
-                print("Population stagnation")
-                if len(self._species) >= 2:
-                    species_fitness = np.argsort([s.fitness for s in self._species])[::-1]
-                    self._species = [self._species[species_fitness[0]], self._species[species_fitness[1]]]
-                    self._stagnation_history = []
+    def specie_overlay(self):
+        species = [species for species in self._species if species.is_mature()]
 
-    """
+        for i in range(len(species)):
+            for j in range(i + 1, len(species)):
+                if Genotype.is_compatible(self.neat, species[i].get_best_member(), species[j].get_best_member(), True):
+                    print("overlay")
+                    species[i].union(species[j])
+                    self._species.remove(species[j])
+                    return True
+        return False
+
     def crossover(self):
-        self._species_champs = []
-        new_pop = []
+        self.stagnation_crossover() if self.is_stagnating() else self.classic_crossover()
+
+    def stagnation_crossover(self):
+        print("Population stagnation")
+
+        self._stagnation_history = []
+        self._population = []
+        self._population_elite = []
 
         species_fitness = [species.fitness for species in self._species]
-        species_fitness_sum = sum(species_fitness)
 
         for species in self._species:
-            slots = int(species.fitness / species_fitness_sum * self._size) - 1
-            new_pop.append(species.get_champ())
-            self._species_champs.append(species.get_champ())
+            species_best = species.get_best_member()
+            self.append_elite(species_best)
 
-            if species.is_dying():
-                original_members = [member for member in species.members]
-                for _ in range(slots):
-                    original_genotype = random.sample(original_members, 1)[0]  # type: Genotype
-                    diverse_genotype = Genotype.initial_copy(original_genotype)
-                    new_size = len(diverse_genotype.edges) * (1 + ((1 - Genotype.compatibility_threshold) / 5))
-                    while len(diverse_genotype.edges) < new_size:
-                        if np.random.uniform() < 0.35:
-                            diverse_genotype.mutate_add_node(self.neat.dataset)
-                        else:
-                            diverse_genotype.mutate_add_edge()
-                    new_pop.append(diverse_genotype)
-            else:
-                for _ in range(slots):
-                    # parents = random.sample(species.members, 2)
-                    # new_pop.append(Genotype.crossover(parents[0], parents[1]))
-                    parents = random.sample(species.members, 3)
-                    new_pop.append(Genotype.triple_crossover(parents[0], parents[1], parents[2]))
+            slots = math.ceil(species.fitness / sum(species_fitness) * self._size) - self.species_elitism
+            for _ in range(slots):
+                self._population.append(species_best.initial_copy())
 
-        self._population = new_pop
-    """
+        """
+        self._stagnation_history = []
+        self._population = []
+        self._population_elite = []
+        
+        species_fitness = [species.fitness for species in self._species]
 
-    def get_elitism_slots(self) -> int:
-        return math.ceil(self._size * self.elitism)
+        for species in self._species:
+            species_elite = species.get_elite(self.species_elitism)
+            for genotype in species_elite:
+                self.append_elite(genoty   pe)
 
-    def append_elite(self, member: Genotype):
-        if member not in self._population_elite:
-            self._population.append(member)
-            self._population_elite.append(member)
+            slots = math.ceil(species.fitness / sum(species_fitness) * self._size) - self.species_elitism
 
-    def crossover(self):
-        old_population = self._population
-        old_population_best_indices = np.argsort([genotype.fitness for genotype in old_population])[::-1]
+            for i in range(slots):
+                copy = species_elite[i % len(species_elite)].deepcopy()
+                for edge in copy.edges:
+                    edge.mutate_perturbate_weight()
+                self._population.append(copy)
+        """
+
+    def classic_crossover(self):
         species_fitness = [species.fitness for species in self._species]
 
         self._population = []
         self._population_elite = []
 
         for species in self._species:
-
-            species_elite = species.get_elite(self.elitism)
+            species_elite = species.get_elite(self.species_elitism)
             for genotype in species_elite:
                 self.append_elite(genotype)
 
-            slots = math.ceil(species.fitness / sum(species_fitness) * (self._size - self.get_elitism_slots()))
+            slots = math.ceil(species.fitness / sum(species_fitness) * self._size) - self.species_elitism
 
             is_dying = species.is_dying()
             for i in range(slots):
-                if (np.random.uniform() < 0.97 and not is_dying) or len(self._species) == 1:
+                if (np.random.uniform() < 0.9 and not is_dying) or len(self._species) == 1:
                     # Species mating
                     parents = random.sample(species.members, 3)
                 else:
@@ -196,11 +199,6 @@ class Population:
                 child = Genotype.triple_crossover(parents[0], parents[1], parents[2])
 
                 self._population.append(child)
-
-        indices_counter = 0
-        while len(self._population_elite) < self.get_elitism_slots():
-            self.append_elite(old_population[old_population_best_indices[indices_counter]])
-            indices_counter += 1
 
     def mutate_weights(self):
         # Perturbations for genomes not created by DE
@@ -214,7 +212,7 @@ class Population:
         # Smaller mutation for genomes created by DE
         for genotype in [genotype for genotype in self._population if genotype not in self._population_elite]:
             for edge in [edge for edge in genotype.edges if not edge.mutable]:
-                if np.random.uniform() < 0.1:
+                if np.random.uniform() < 0.05:
                     edge.mutate_random_weight()
                 elif np.random.uniform() < 0.2:
                     edge.mutate_shift_weight()
@@ -222,44 +220,31 @@ class Population:
         # Reenabling
         for genotype in [genotype for genotype in self._population if genotype not in self._population_elite]:
             for edge in [edge for edge in genotype.edges if not edge.enabled]:
-                if np.random.uniform() < 0.05:
+                if np.random.uniform() < 0.03:
                     edge.enabled = True
-
-    """
-    def mutate_weights(self):
-        for genotype in self._population:
-            if np.random.uniform() < self.__mutate_weights_prop and genotype not in self._species_champs:
-                for edge in genotype.edges:
-                    if edge.enabled:
-                        if np.random.uniform(0, 1) < 0.9:
-                            edge.mutate_perturbate_weight()
-                        else:
-                            edge.mutate_random_weight()
-    """
 
     def mutate_topology(self):
         avg_compatibility = self.get_compatibility()
         threshold = Genotype.compatibility_threshold
-        half_threshold = threshold + ((1 - threshold) * 0.5)
         diverse_threshold = threshold + ((1 - threshold) * 0.7)
 
-        if len(self._species) + 2 < self.max_species or avg_compatibility > diverse_threshold:
-            self._grow_rate += (avg_compatibility - threshold) / 2
+        if len(self._species) < self.max_species or avg_compatibility > diverse_threshold:
+            self._topology_grow_rate += (avg_compatibility - threshold)
         else:
-            self._grow_rate *= 0.9
+            self._topology_grow_rate *= 0.9
 
-        if self._grow_rate > 1:
-            self._grow_rate = 1
-        if self._grow_rate < 0.1:
-            self._grow_rate = 0.1
+        if self._topology_grow_rate > 1:
+            self._topology_grow_rate = 1
+        if self._topology_grow_rate < 0.1:
+            self._topology_grow_rate = 0.1
 
         for genotype in [genotype for genotype in self._population if genotype not in self._population_elite]:
-            if np.random.uniform() < self._grow_rate:
-                new_size = len(genotype.edges) * 1.01
+            if np.random.uniform() < self._topology_grow_rate:
+                new_size = len(genotype.edges) * 1.02
                 while len(genotype.edges) < new_size:
                     if np.random.uniform() < 0.2:
                         genotype.mutate_add_node(self.neat.dataset)
-                    if np.random.uniform() < 0.5:
+                    else:
                         genotype.mutate_add_edge()
 
     def mutate_add_node(self):
@@ -272,7 +257,29 @@ class Population:
             if np.random.uniform() < self.__mutate_add_edge_prop and genotype not in self._population_elite:
                 genotype.mutate_add_edge()
 
-    def get_best(self) -> Genotype:
+    def is_stagnating(self):
+        return max(self._stagnation_history) == self._stagnation_history[0] \
+            if len(self._stagnation_history) == self.__stagnation_time else False
+
+    def get_species(self) -> List[Species]:
+        return self._species
+
+    def get_grow_rate(self) -> float:
+        return self._topology_grow_rate
+
+    def get_compatibility(self) -> float:
+        return sum(self._compatibility) / len(self._compatibility)
+
+    def get_avg_score(self) -> float:
+        return sum(p.score for p in self._population) / len(self._population)
+
+    def get_avg_fitness(self) -> float:
+        return sum(p.fitness for p in self._population) / len(self._population)
+
+    def get_random_member(self) -> Genotype:
+        return random.sample(self._population, 1)[0]
+
+    def get_best_member(self) -> Genotype:
         best_fitness = 0
         for i in range(1, len(self._population)):
             if self._population[i].score > self._population[best_fitness].score:
@@ -280,14 +287,10 @@ class Population:
 
         return self._population[best_fitness]
 
-    def get_random(self) -> Genotype:
-        return random.sample(self._population, 1)[0]
-
-    def get_avg_score(self) -> float:
-        return sum(p.score for p in self._population) / len(self._population)
-
-    def get_avg_fitness(self) -> float:
-        return sum(p.fitness for p in self._population) / len(self._population)
+    def append_elite(self, member: Genotype):
+        if member not in self._population_elite:
+            self._population.append(member)
+            self._population_elite.append(member)
 
     def get_nodes_info(self) -> Tuple[float, int, int]:
         avg = 0.0
@@ -327,85 +330,13 @@ class Population:
         avg /= len(self._population)
         return avg, maximum, minimum
 
-    def get_species(self) -> List[Species]:
-        return self._species
-
-    @staticmethod
-    def _get_natural_select(fitness: List[float]) -> int:
-        rand = np.random.uniform(0, sum(fitness))
-
-        for i in range(len(fitness)):
-            if rand < fitness[i]:
-                return i
-            else:
-                rand -= fitness[i]
-
-    """
-    def evaluate(self, dataset: Dataset):
-        process_count = mp.cpu_count()
-        process_list = []  # type: List[mp.Process]
-        process_out_list = []
-
-        step = int(len(self._population) / process_count)
-
-        pid = 0
-        start_time = time.time()
-
-        # noinspection PyBroadException
-        try:
-            f = -step
-            for i in range(process_count):
-                pid += 1
-                f += step
-                t = f + step if i + 1 < process_count else len(self._population)
-                process_out = mp.Queue()
-                process_out_list.append(process_out)
-
-                process_list.append(
-                    mp.Process(target=self.eval_single,
-                               args=(self._population[f:t], copy.deepcopy(dataset), process_out, pid, start_time)))
-
-            for p in process_list:
-                p.start()
-
-            for p in process_list:
-                p.join()
-
-            f = -step
-            for i in range(process_count):
-                out_list = process_out_list[i]
-                f += step
-                t = f + step if i + 1 < process_count else len(self._population)
-
-                for j in range(f, t):
-                    self._population[j].fitness = out_list.get()
-        except Exception:
-            print("Multi process evaluation failed, using single process!")
-            for genotype in self._population:
-                genotype.calculate_fitness(dataset)
-
-        fitness = [genotype.fitness for genotype in self._population]
-
-        m = min(fitness)
-        m = abs(m) if m < 0 else 0
-
-        self._stagnation_history.append(max(fitness))
-        self._stagnation_history = self._stagnation_history[-self.__stagnation_time:]
-
-        for genotype in self._population:
-            genotype.score = genotype.fitness
-            genotype.fitness += m
-
-        print()
-    """
-
     def evaluate(self, dataset: Dataset):
         process_count = mp.cpu_count()
         process_list = []  # type: List[mp.Process]
         process_out_list = []
         pop_size = len(self._population)
 
-        step = 4  # int(len(self._population) / process_count)
+        step = 5
 
         # noinspection PyBroadException
         try:
@@ -421,8 +352,7 @@ class Population:
                     process_out = mp.Queue()
                     process_out_list.append(process_out)
 
-                    p = mp.Process(target=self.eval_single,
-                                   args=(self._population[f:t], copy.deepcopy(dataset), process_out))
+                    p = mp.Process(target=self.eval_single, args=(self._population[f:t], dataset, process_out))
                     p.start()
                     process_list.append(p)
 
@@ -447,20 +377,28 @@ class Population:
             for genotype in self._population:
                 genotype.calculate_fitness(dataset)
 
-        fitness = [genotype.fitness for genotype in self._population]
-
-        m = min(fitness)
+        m = min([genotype.fitness for genotype in self._population])
         m = abs(m) if m < 0 else 0
-
-        self._stagnation_history.append(max(fitness))
-        self._stagnation_history = self._stagnation_history[-self.__stagnation_time:]
 
         for genotype in self._population:
             genotype.score = genotype.fitness
             genotype.fitness += m
+
+        self._stagnation_history.append(max([genotype.score for genotype in self._population]))
+        self._stagnation_history = self._stagnation_history[-self.__stagnation_time:]
 
     @staticmethod
     def eval_single(population: List[Genotype], dataset: Dataset, process_out: mp.Queue):
         for genotype in population:
             genotype.calculate_fitness(dataset)
             process_out.put(genotype.fitness)
+
+    @staticmethod
+    def _get_natural_select(fitness: List[float]) -> int:
+        rand = np.random.uniform(0, sum(fitness))
+
+        for i in range(len(fitness)):
+            if rand < fitness[i]:
+                return i
+            else:
+                rand -= fitness[i]

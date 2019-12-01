@@ -14,19 +14,25 @@ class Edge:
         self.mutable = True if mutable is None else mutable
 
         self.weight = kwargs.get("weight", None)
-        self.set_weight(np.random.normal(0.0, 0.25) if self.weight is None else self.weight)
+        self.mutate_random_weight() if self.weight is None else self.set_weight(self.weight)
 
     def mutate_random_weight(self):
-        self.set_weight(np.random.normal(0.0, 0.25))
+        # self.weight = np.random.normal(0.0, 0.25)
+        self.weight = np.random.normal(0.0, 1.0)
 
     def mutate_perturbate_weight(self):
-        self.set_weight(self.weight + np.random.normal(0, 0.1))
+        # self.set_weight(self.weight + np.random.normal(0, 0.1))
+        self.set_weight(self.weight + np.random.normal(0, 0.2))
 
     def mutate_shift_weight(self):
-        self.set_weight(self.weight + np.random.normal(0.0, 0.05))
+        # self.set_weight(self.weight + np.random.normal(0.0, 0.05))
+        self.set_weight(self.weight * np.random.uniform(0.95, 1.05))
 
     def set_weight(self, weight: float):
-        self.weight = np.random.normal(0.0, 0.25) if weight > 8 or weight < -8 else weight
+        if weight > 8 or weight < -8:
+            self.mutate_random_weight()
+        else:
+            self.weight = weight
 
     def __repr__(self):
         """

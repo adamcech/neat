@@ -1,7 +1,11 @@
-import numpy as np
+from gym_client.bipedal_walker_client import BipedalWalkerClient
+from gym_client.cart_pole_client import CartPoleClient
+from neat.ann.ann import Ann
+from neat.encoding.genotype import Genotype
+from neat.neat import Neat
 
-vals = [1]
+genotype = Genotype.initial_genotype(CartPoleClient(), [10, 5, 3])
 
-a = np.std(vals)
+print(genotype)
 
-print(a)
+print("end")

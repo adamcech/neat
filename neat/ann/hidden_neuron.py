@@ -25,11 +25,11 @@ class HiddenNeuron(Neuron):
             summation = sum([connection.forward() for connection in self.connections])
 
             # Clamped
-            # self._output = summation if -1 < summation < 1 else (1 if summation >= 1 else -1)
+            self._output = max(min(summation, 1), -1)
 
             # Steepened Tanh
             # self._output = -1 if summation < -72 else 2 / (1 + np.power(np.e, 9.8 * -summation)) - 1
-            self._output = -1 if summation < -144 else 2 / (1 + np.power(np.e, 4.9 * -summation)) - 1
+            # self._output = -1 if summation < -144 else 2 / (1 + np.power(np.e, 4.9 * -summation)) - 1
 
             # Tanh
             # self._output = tanh(summation)

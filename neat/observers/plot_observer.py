@@ -1,7 +1,6 @@
 import os
 from typing import List, Union, Tuple, Dict
 
-from neat.population import Population
 from neat.observers.abstract_observer import AbstractObserver
 
 import matplotlib.pyplot as plt
@@ -16,7 +15,7 @@ class PlotObserver(AbstractObserver):
         self._generation = 0
         self._plot_counter = plot_counter
 
-        self.dir_path = "/home/adam/Workspace/pycharm/neat/graphs_"
+        self.dir_path = "/home/adam/Workspace/pycharm/neat/files_"
         dir_counter = 0
 
         while True:
@@ -55,8 +54,10 @@ class PlotObserver(AbstractObserver):
     def start_generation(self, generation: int) -> None:
         self._generation = generation
 
-    def end_generation(self, population: Population) -> None:
-        best = population.get_best()
+    def end_generation(self, neat: "Neat") -> None:
+        population = neat.population
+
+        best = population.get_best_member()
 
         self._max_score.append(best.score)
         self._avg_score.append(population.get_avg_score())
@@ -97,11 +98,9 @@ class PlotObserver(AbstractObserver):
         self._species_sizes.append(curr_species)
 
         if self._generation % self._plot_counter == 0 and self._generation != 0:
-            self._plot_curves([self._max_score, self._avg_score, self._avg_score_std_plus, self._avg_score_std_minus], ["max", "avg", "+std", "-std"], ["r-", "b-", "g-.", "g-."], "Score", self._get_base_path("score.svg"))
-            # self._plot_curves([self._max_fitness, self._avg_fitness, self._avg_fitness_std_plus, self._avg_fitness_std_minus], ["max", "avg", "+std", "-std"], ["r-", "b-", "g-.", "g-."], "Fitness", self._get_base_path("fitness.svg"))
-            self._plot_curves([self._nodes_max, self._nodes_min, self._nodes_avg, self._nodes_avg_std_plus, self._nodes_avg_std_minus], ["max", "min", "avg", "+std", "-std"], ["r-", "k-", "b-", "g-.", "g-."], "Nodes", self._get_base_path("nodes.svg"))
-            self._plot_curves([self._edges_max, self._edges_min, self._edges_avg, self._edges_avg_std_plus, self._edges_avg_std_minus], ["max", "min", "avg", "+std", "-std"], ["r-", "k-", "b-", "g-.", "g-."], "Edges", self._get_base_path("edges.svg"))
-            self._plot_species(self._get_base_path("species.svg"))
+            self._plot_curves([self._max_score, self._avg_score], ["max", "avg"], ["r-", "b-"], "Score", self._get_base_path("score.svg"))
+            self._plot_curves([self._nodes_max, self._nodes_min, self._nodes_avg, self._edges_max, self._edges_min, self._edges_avg], ["Nodes Max", "Nodes Min", "Nodes Avg", "Edges Max", "Edges Min", "Edges Avg"], ["r-", "k-", "b-", "r--", "k--", "b--"], "Topology", self._get_base_path("topology.svg"))
+            # self._plot_species(self._get_base_path("species.svg"))
             self._plot_best(best, self._get_base_path("best.svg"))
 
     def _plot_curves(self, curves: List[List[Union[int, float]]], labels: List[str], markers: List[str], header: str, save_path=None):

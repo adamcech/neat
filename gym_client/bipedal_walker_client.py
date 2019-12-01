@@ -12,7 +12,7 @@ class BipedalWalkerClient(GymClient):
         return False
 
     def get_max_trials(self) -> int:
-        return 1
+        return 1 if self._max_trials is None else self._max_trials
 
     def get_max_episodes(self) -> int:
         return 1600
@@ -21,7 +21,7 @@ class BipedalWalkerClient(GymClient):
         return 24
 
     def get_bias_size(self) -> int:
-        return 2
+        return 0
 
     def get_output_size(self) -> int:
         return 4

@@ -21,7 +21,7 @@ class CartPoleClient(GymClient):
         return 4
 
     def get_bias_size(self) -> int:
-        return 1
+        return 0
 
     def get_output_size(self) -> int:
         return 2

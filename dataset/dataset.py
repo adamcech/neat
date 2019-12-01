@@ -1,3 +1,6 @@
+from typing import Tuple
+
+
 class Dataset:
     """Abstract class for datasets implementation
     """
@@ -5,6 +8,9 @@ class Dataset:
         raise NotImplementedError()
 
     def get_bias_size(self) -> int:
+        raise NotImplementedError()
+
+    def set_max_trials(self, max_trials: int) -> None:
         raise NotImplementedError()
 
     def get_output_size(self) -> int:
