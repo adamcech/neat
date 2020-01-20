@@ -14,6 +14,7 @@ class AutosaveObserver(AbstractObserver):
         self.generation = generation
 
     def end_generation(self, neat: "Neat") -> None:
-        if self.generation % self.autosave_generation == 0 and self.generation != 0:
-            with open(self.dir_path + "/" + str(self.generation) + "_autosave", 'wb') as file:
+        if self.generation % self.autosave_generation == self.autosave_generation - 1 and self.generation != 0:
+            neat.population.remove_recursions()
+            with open(self.dir_path + "/" + str(self.generation + 1) + "_autosave", 'wb') as file:
                 pickle.dump(neat, file)

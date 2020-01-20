@@ -1,8 +1,9 @@
 import numpy as np
-from typing import List
+from typing import List, Any, Tuple, Union
 
 from dataset.dataset import Dataset
 from dataset.dataset_item import DatasetItem
+from neat.ann.ann import Ann
 
 
 class DatasetXor(Dataset):
@@ -32,14 +33,15 @@ class DatasetXor(Dataset):
     def get_output_size(self) -> int:
         return 1
 
-    def get_fitness(self, ann) -> float:
+    def get_fitness(self, ann: Ann, seed: Any = None) -> Tuple[float, Union[None, List[Any]], List[float]]:
         fitness = 0
 
         for item in self._dataset:
             result = ann.calculate(item.input)
             fitness += np.abs(sum([item.output[i] - result[i] for i in range(self.get_output_size())]))
 
-        return np.power(4 - fitness, 2)
+        fitness = np.power(4 - fitness, 2)
+        return fitness, None, [fitness]
 
     def get_dataset(self):
         return self._dataset
@@ -48,4 +50,3 @@ class DatasetXor(Dataset):
         for item in self._dataset:
             result = ann.calculate(item.input)
             print(str(item) + "; Result " + str(result))
-

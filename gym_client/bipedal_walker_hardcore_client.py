@@ -1,12 +1,12 @@
-import gym
+from typing import Union
 
 from gym_client.gym_client import GymClient
 
 
 class BipedalWalkerHardcoreClient(GymClient):
 
-    def get_environment(self) -> gym.Env:
-        return gym.make("BipedalWalkerHardcore-v2")
+    def get_environment_name(self) -> str:
+        return "BipedalWalkerHardcore-v2"
 
     def is_discrete(self) -> bool:
         return False
@@ -21,7 +21,10 @@ class BipedalWalkerHardcoreClient(GymClient):
         return 24
 
     def get_bias_size(self) -> int:
-        return 2
+        return 1
 
     def get_output_size(self) -> int:
         return 4
+
+    def recalc_reawrd(self, reward: Union[int, float]) -> Union[int, float]:
+        return -10 if reward == -100 else reward

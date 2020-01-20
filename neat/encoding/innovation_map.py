@@ -1,8 +1,3 @@
-from typing import List
-
-from neat.encoding.node import Node
-
-
 class InnovationMap:
     """Utility for keeping track of innovation numbers
     """
@@ -12,7 +7,7 @@ class InnovationMap:
         self._node_keys = {}
         self._connection_keys = {}
 
-    def get_node_innovation(self, input_id: int, output_id: int, existing_nodes: List[Node]) -> int:
+    def get_node_innovation(self, input_id: int, output_id: int, existing_nodes: list) -> int:
         key = InnovationMap.__get_key(input_id, output_id)
         id_list = self._node_keys.get(key)
 

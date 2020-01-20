@@ -18,7 +18,7 @@ class ConsoleObserver(AbstractObserver):
 
         self._max_col_length = 16
 
-        self._cols = ["Generation", "Avg. Eval.", "Eval. Time", "Topology grow", "Compatibility", "Best Score", "Avg. Score", "Species [id, members, fitness]"]
+        self._cols = ["Generation", "Avg. Eval.", "Eval. Time", "Topology grow", "Compatibility", "Best Score", "Avg. Score", "Worst Score", "Species [id, members, fitness]"]
         self._print_cols(self._cols)
 
     def start_generation(self, generation: int) -> None:
@@ -43,6 +43,7 @@ class ConsoleObserver(AbstractObserver):
             cols.append(population.get_compatibility())
             cols.append(population.get_best_member().score)
             cols.append(population.get_avg_score())
+            cols.append(population.get_worst_member().score)
 
         species = []
         if self._species:

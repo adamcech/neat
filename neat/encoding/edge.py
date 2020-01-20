@@ -17,16 +17,13 @@ class Edge:
         self.mutate_random_weight() if self.weight is None else self.set_weight(self.weight)
 
     def mutate_random_weight(self):
-        # self.weight = np.random.normal(0.0, 0.25)
-        self.weight = np.random.normal(0.0, 1.0)
+        self.set_weight(np.random.normal(0.0, 1.0))
 
     def mutate_perturbate_weight(self):
-        # self.set_weight(self.weight + np.random.normal(0, 0.1))
-        self.set_weight(self.weight + np.random.normal(0, 0.2))
+        self.set_weight(self.weight + np.random.normal(0, 0.1))
 
     def mutate_shift_weight(self):
-        # self.set_weight(self.weight + np.random.normal(0.0, 0.05))
-        self.set_weight(self.weight * np.random.uniform(0.95, 1.05))
+        self.set_weight(self.weight * np.random.uniform(0.97, 1.03))
 
     def set_weight(self, weight: float):
         if weight > 8 or weight < -8:

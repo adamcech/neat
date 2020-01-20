@@ -1,31 +1,34 @@
-from typing import Union
+from typing import Union, Tuple
 
 from gym_client.gym_client import GymClient
+from gym_client.gym_client_text import GymClientText
 
 
-class BipedalWalkerClient(GymClient):
+class BipedalWalkerClient(GymClientText):
 
     def get_environment_name(self) -> str:
-        return "BipedalWalker-v2"
+        return "Copy-v0"
 
     def is_discrete(self) -> bool:
-        return False
+        return True
 
     def get_max_trials(self) -> int:
         return 1
 
     def get_max_episodes(self) -> int:
-        return 1600
+        return 200
 
     def get_input_size(self) -> int:
-        return 24
+        return 6
 
     def get_bias_size(self) -> int:
         return 1
 
     def get_output_size(self) -> int:
-        return 4
+        return 9
+
+    def get_output_groups(self) -> Tuple[int, int, int]:
+        return 2, 2, 5
 
     def recalc_reawrd(self, reward: Union[int, float]) -> Union[int, float]:
-        # return -50 if reward == -100 else reward
         return reward

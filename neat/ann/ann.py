@@ -6,6 +6,10 @@ from neat.ann.connection import Connection
 from neat.ann.neuron import Neuron
 from neat.ann.hidden_neuron import HiddenNeuron
 
+from scipy.special import softmax
+
+from neat.ann.output_neuron import OutputNeuron
+
 
 class Ann:
     """Genotype to ANN mapping

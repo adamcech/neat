@@ -1,12 +1,10 @@
-import gym
-
 from gym_client.gym_client import GymClient
 
 
 class LunarLanderClient(GymClient):
 
-    def get_environment(self) -> gym.Env:
-        return gym.make("LunarLander-v2")
+    def get_environment_name(self) -> str:
+        return "LunarLander-v2"
 
     def is_discrete(self) -> bool:
         return True

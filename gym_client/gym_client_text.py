@@ -6,7 +6,7 @@ from dataset.dataset import Dataset
 from neat.ann.ann import Ann
 
 
-class GymClient(Dataset):
+class GymClientText(Dataset):
     """Abstract class for gym_client clients
     """
 
@@ -51,12 +51,21 @@ class GymClient(Dataset):
     def get_output_size(self) -> int:
         raise NotImplementedError()
 
+    def get_output_groups(self) -> Tuple[int, int, int]:
+        raise NotImplementedError()
+
     def recalc_reawrd(self, reward: Union[int, float]) -> Union[int, float]:
         return reward
 
-    def _get_ann_action(self, ann: Ann, observation: np.ndarray) -> Union[int, List[float]]:
+    def _get_ann_action(self, ann: Ann, observation: np.ndarray) -> Tuple[int, int, int]:
         output = ann.calculate(np.append(observation, self.__bias_input))
-        return output.index(max(output)) if self.is_discrete() else output
+
+        output_groups = self.get_output_groups()
+        group0 = output[0:output_groups[0]]
+        group1 = output[output_groups[0]:output_groups[0] + output_groups[1]]
+        group2 = output[output_groups[0] + output_groups[1]:sum(output_groups)]
+
+        return group0.index(max(group0)), group1.index(max(group1)), group2.index(max(group2))
 
     def get_fitness(self, ann: Ann, seed: Any = None) -> Tuple[float, Union[None, List[Any]], List[float]]:
         scores = []

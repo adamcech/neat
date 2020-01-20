@@ -4,7 +4,7 @@ from typing import List, Union, Tuple, Dict
 from neat.observers.abstract_observer import AbstractObserver
 
 import matplotlib.pyplot as plt
-import neat_tools
+from neat import neat_tools
 
 import numpy as np
 
@@ -27,6 +27,7 @@ class PlotObserver(AbstractObserver):
                 break
 
         self._max_score = []  # type: List[float]
+        self._min_score = []  # type: List[float]
         self._avg_score = []  # type: List[float]
         self._avg_score_std_plus = []  # type: List[float]
         self._avg_score_std_minus = []  # type: List[float]
@@ -56,10 +57,10 @@ class PlotObserver(AbstractObserver):
 
     def end_generation(self, neat: "Neat") -> None:
         population = neat.population
-
         best = population.get_best_member()
 
         self._max_score.append(best.score)
+        self._min_score.append(population.get_worst_member().score)
         self._avg_score.append(population.get_avg_score())
         avg_score_std = np.std(self._avg_score)
         self._avg_score_std_plus.append(self._avg_score[-1] + avg_score_std)
@@ -97,14 +98,30 @@ class PlotObserver(AbstractObserver):
 
         self._species_sizes.append(curr_species)
 
-        if self._generation % self._plot_counter == 0 and self._generation != 0:
-            self._plot_curves([self._max_score, self._avg_score], ["max", "avg"], ["r-", "b-"], "Score", self._get_base_path("score.svg"))
-            self._plot_curves([self._nodes_max, self._nodes_min, self._nodes_avg, self._edges_max, self._edges_min, self._edges_avg], ["Nodes Max", "Nodes Min", "Nodes Avg", "Edges Max", "Edges Min", "Edges Avg"], ["r-", "k-", "b-", "r--", "k--", "b--"], "Topology", self._get_base_path("topology.svg"))
+        if self._generation % self._plot_counter == self._plot_counter - 1 and self._generation != 0:
+            self._plot_curves([self._max_score, self._avg_score],
+                              ["max", "avg"],
+                              ["r-", "b-"],
+                              "Score",
+                              self._get_base_path("score.svg"))
+
+            self._plot_curves([self._nodes_max, self._nodes_min, self._nodes_avg],
+                              ["Nodes Max", "Nodes Min", "Nodes Avg"],
+                              ["r-", "k-", "b-"],
+                              "Nodes",
+                              self._get_base_path("nodes.svg"))
+
+            self._plot_curves([self._edges_max, self._edges_min, self._edges_avg],
+                              ["Edges Max", "Edges Min", "Edges Avg"],
+                              ["r-", "k-", "b-"],
+                              "Edges",
+                              self._get_base_path("edges.svg"))
+
             # self._plot_species(self._get_base_path("species.svg"))
             self._plot_best(best, self._get_base_path("best.svg"))
 
     def _plot_curves(self, curves: List[List[Union[int, float]]], labels: List[str], markers: List[str], header: str, save_path=None):
-        generation = [i for i in range(self._generation + 1)]
+        generation = [i for i in range(len(curves[0]))]
         size = len(labels)
 
         for i in range(size):
@@ -147,4 +164,4 @@ class PlotObserver(AbstractObserver):
         neat_tools.visualize_genotype(best, save_path)
 
     def _get_base_path(self, file_name: str):
-        return self.dir_path + "/" + str(self._generation) + "_" + file_name
+        return self.dir_path + "/" + str(self._generation + 1) + "_" + file_name

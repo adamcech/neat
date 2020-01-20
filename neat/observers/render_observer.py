@@ -17,9 +17,9 @@ class RenderObserver(AbstractObserver):
     def end_generation(self, neat: "Neat") -> None:
         population = neat.population
 
-        if self._generation % self._render_counter == 0 and self._generation != 0:
+        if self._generation % self._render_counter == self._render_counter - 1 and self._generation != 0:
             self._render(population.get_best_member())
 
     def _render(self, genotype: "Genotype"):
         print(genotype)
-        self._dataset.render(Ann(genotype), loops=1)
+        self._dataset.render(Ann(genotype), genotype.evaluated_seed, loops=1)
