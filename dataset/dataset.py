@@ -10,14 +10,17 @@ class Dataset:
     def get_input_size(self) -> int:
         raise NotImplementedError()
 
-    def get_bias_size(self) -> int:
-        raise NotImplementedError()
-
     def get_output_size(self) -> int:
         raise NotImplementedError()
 
-    def get_fitness(self, ann: Ann, seed: Any = None) -> Tuple[float, Union[None, List[Any]], List[float]]:
+    def get_bias_size(self) -> int:
+        raise NotImplementedError()
+
+    def get_fitness(self, ann: Ann, seed: Any = None) -> Tuple[float, Union[None, List[Any]], List[float], int]:
         raise NotImplementedError()
 
     def render(self, ann: Ann, seed: Any = None, **kwargs) -> None:
+        raise NotImplementedError()
+
+    def get_random_seed(self, count: int) -> Union[List[Any], None]:
         raise NotImplementedError()

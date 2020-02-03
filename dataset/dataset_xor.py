@@ -14,7 +14,9 @@ class DatasetXor(Dataset):
     1 1: 0
     """
 
-    def __init__(self):
+    def __init__(self, bias_nodes: int = None):
+        self.bias_nodes = 0 if bias_nodes is None else bias_nodes
+
         xor00 = DatasetItem([0, 0], [0])
         xor01 = DatasetItem([0, 1], [1])
         xor10 = DatasetItem([1, 0], [1])
@@ -27,13 +29,13 @@ class DatasetXor(Dataset):
     def get_input_size(self) -> int:
         return 2
 
-    def get_bias_size(self) -> int:
-        return 1
-
     def get_output_size(self) -> int:
         return 1
 
-    def get_fitness(self, ann: Ann, seed: Any = None) -> Tuple[float, Union[None, List[Any]], List[float]]:
+    def get_bias_size(self) -> int:
+        return self.bias_nodes
+
+    def get_fitness(self, ann: Ann, seed: Any = None) -> Tuple[float, Union[None, List[Any]], List[float], int]:
         fitness = 0
 
         for item in self._dataset:
@@ -41,12 +43,12 @@ class DatasetXor(Dataset):
             fitness += np.abs(sum([item.output[i] - result[i] for i in range(self.get_output_size())]))
 
         fitness = np.power(4 - fitness, 2)
-        return fitness, None, [fitness]
+        return fitness, None, [fitness], 1
 
-    def get_dataset(self):
-        return self._dataset
-
-    def render(self, ann, **kwargs) -> None:
+    def render(self, ann: Ann, seed: Any = None, **kwargs) -> None:
         for item in self._dataset:
             result = ann.calculate(item.input)
             print(str(item) + "; Result " + str(result))
+
+    def get_random_seed(self, count: int) -> None:
+        return None

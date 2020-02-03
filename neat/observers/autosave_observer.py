@@ -1,3 +1,4 @@
+import os
 import pickle
 
 from neat.observers.abstract_observer import AbstractObserver
@@ -15,6 +16,14 @@ class AutosaveObserver(AbstractObserver):
 
     def end_generation(self, neat: "Neat") -> None:
         if self.generation % self.autosave_generation == self.autosave_generation - 1 and self.generation != 0:
-            neat.population.remove_recursions()
-            with open(self.dir_path + "/" + str(self.generation + 1) + "_autosave", 'wb') as file:
+
+            # Preventing possible recursions
+            for genotype in neat.population.population:
+                genotype.ancestor = None
+            neat.population.offspring_population = []
+
+            if not os.path.exists(self.dir_path):
+                os.makedirs(self.dir_path)
+
+            with open(self.dir_path + os.path.sep + str(self.generation + 1) + "_autosave", 'wb') as file:
                 pickle.dump(neat, file)

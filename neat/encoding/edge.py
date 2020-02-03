@@ -1,10 +1,14 @@
 import numpy as np
 
+from neat.config import Config
+
 
 class Edge:
     """Genome representation of connection genes
     """
-    def __init__(self, input_node: int, output_node: int, enabled: bool, innovation: int, **kwargs):
+    def __init__(self, config: Config, input_node: int, output_node: int, enabled: bool, innovation: int, **kwargs):
+        self.config = config
+
         self.input = input_node
         self.output = output_node
         self.enabled = enabled
@@ -17,16 +21,16 @@ class Edge:
         self.mutate_random_weight() if self.weight is None else self.set_weight(self.weight)
 
     def mutate_random_weight(self):
-        self.set_weight(np.random.normal(0.0, 1.0))
+        self.set_weight(np.random.normal(self.config.mutate_random_weight_mu, self.config.mutate_random_weight_sigm))
 
     def mutate_perturbate_weight(self):
-        self.set_weight(self.weight + np.random.normal(0, 0.1))
+        self.set_weight(self.weight + np.random.normal(self.config.mutate_perturbate_weight_mu, self.config.mutate_perturbate_weight_sigm))
 
     def mutate_shift_weight(self):
-        self.set_weight(self.weight * np.random.uniform(0.97, 1.03))
+        self.set_weight(self.weight * np.random.uniform(self.config.mutate_shift_weight_lower_bound, self.config.mutate_shift_weight_upper_bound))
 
     def set_weight(self, weight: float):
-        if weight > 8 or weight < -8:
+        if weight < self.config.min_weight or weight > self.config.max_weight:
             self.mutate_random_weight()
         else:
             self.weight = weight

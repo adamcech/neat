@@ -5,16 +5,13 @@ import numpy
 from neat.ann.connection import Connection
 from neat.ann.neuron import Neuron
 from neat.ann.hidden_neuron import HiddenNeuron
-
-from scipy.special import softmax
-
-from neat.ann.output_neuron import OutputNeuron
+from neat.encoding.node_activation import NodeActivation
 
 
 class Ann:
     """Genotype to ANN mapping
     """
-    def __init__(self, genotype: "Genotype"):
+    def __init__(self, genotype: "Genotype", node_activation: NodeActivation):
         self._inputs = []  # type: List[Neuron]
         self._hidden = []  # type: List[HiddenNeuron]
         self._outputs = []  # type: List[HiddenNeuron]
@@ -25,9 +22,9 @@ class Ann:
             if node.is_input() or node.is_bias():
                 self._inputs.append(Neuron(node.id))
             elif node.is_hidden():
-                self._hidden.append(HiddenNeuron(node.id, self))
+                self._hidden.append(HiddenNeuron(node.id, self, node_activation))
             elif node.is_output():
-                self._outputs.append(HiddenNeuron(node.id, self))
+                self._outputs.append(HiddenNeuron(node.id, self, node_activation))
 
         for edge in [edge for edge in genotype.edges if edge.enabled]:
             for l in [self._hidden, self._outputs]:

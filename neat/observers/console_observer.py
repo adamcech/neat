@@ -18,7 +18,7 @@ class ConsoleObserver(AbstractObserver):
 
         self._max_col_length = 16
 
-        self._cols = ["Generation", "Avg. Eval.", "Eval. Time", "Topology grow", "Compatibility", "Best Score", "Avg. Score", "Worst Score", "Species [id, members, fitness]"]
+        self._cols = ["Generation", "Avg. Eval.", "Eval. Time", "Compatibility", "Arch. Len", "Evals", "Best Score", "Avg. Score", "Worst Score", "Species [id, members, fitness]"]
         self._print_cols(self._cols)
 
     def start_generation(self, generation: int) -> None:
@@ -39,21 +39,22 @@ class ConsoleObserver(AbstractObserver):
             cols.append(self._generation)
             cols.append(self._get_avg_eval())
             cols.append(eval_time)
-            cols.append(population.get_grow_rate())
             cols.append(population.get_compatibility())
+            cols.append(population.archive.get_size())
+            cols.append(population.config.evals)
             cols.append(population.get_best_member().score)
-            cols.append(population.get_avg_score())
+            cols.append(sum(p.score for p in population.population) / len(population.population))
             cols.append(population.get_worst_member().score)
 
         species = []
         if self._species:
-            for s in population.get_species():
+            for s in population.species:
                 species.append([s.id, len(s.members), round(s.score, 3)])
 
         species_indices = np.argsort([s[0] for s in species])
         species = [species[species_indices[i]] for i in range(len(species_indices))]
 
-        cols.append(str(len(population.get_species())) + " " + str(species).ljust(21))
+        cols.append(str(len(population.species)) + " " + str(species).ljust(21))
         self._print_cols(cols)
 
     def _get_avg_eval(self) -> float:
