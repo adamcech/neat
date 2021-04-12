@@ -1,0 +1,58 @@
+# General
+dataset: iris
+population_size: 400
+learning_period: 20
+stagnation_ind: 10
+
+# End Params
+max_generations: 2500
+max_evals: 2500000000
+max_score_termination: 320.0
+
+# Nets Config
+bias_nodes: 0
+activation: tanh
+target_function: softmax
+start_min: False
+
+# Seed generation
+seed_max: 2
+seed_select: 0
+seed_select_random: 1
+seed_attempts: 0
+seed_next: 50
+seed_test: 100
+
+# Species
+species_max: 20
+species_elitism: 0.05
+compatibility_max_diffs: 4
+compatibility_species_max_diffs: 20
+
+# Mutations prop
+mutate_add_node: 0.1
+mutate_add_edge: 0.35
+mutate_activation_change: 0.01
+mutate_de_shift: 0.05
+mutate_de_perturbate: 0.03
+mutate_de_random: 0.01
+mutate_nde_perturbation_over_random: 0.9
+archivate_prop: 0.01
+
+# Mutations vals
+mutate_shift_weight_lower_bound: 0.8
+mutate_shift_weight_upper_bound: 1.2
+min_weight: -4.0
+max_weight: 4.0
+
+# Multiprocessing config
+mp_max_proc: 30
+mp_step: 3
+
+cluster_evaluation: False
+cluster_nodes_loc: /home/adam/Workspace/pycharm/neat/nodes/
+cluster_main_loc: /home/adam/Workspace/pycharm/neat/nodes/
+work_dir: /home/adam/Results/local_0/
+ray_info_loc: /home/cec0113/ray_info/info
+cluster_main_max_load: 20
+walltime_sec: 3600

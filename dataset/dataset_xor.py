@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Any, Tuple, Union
+from typing import List, Any, Tuple, Union, Type
 
 from dataset.dataset import Dataset
 from dataset.dataset_item import DatasetItem
@@ -35,20 +35,25 @@ class DatasetXor(Dataset):
     def get_bias_size(self) -> int:
         return self.bias_nodes
 
-    def get_fitness(self, ann: Ann, seed: Any = None) -> Tuple[float, Union[None, List[Any]], List[float], int]:
+    def get_fitness(self, ann: Ann, seed: Any = None, **kwargs) -> Tuple[float, Union[None, List[Any]], List[float], int]:
         fitness = 0
 
         for item in self._dataset:
             result = ann.calculate(item.input)
-            fitness += np.abs(sum([item.output[i] - result[i] for i in range(self.get_output_size())]))
+            # fitness += np.abs(sum([item.output[i] - result[i] for i in range(self.get_output_size())]))
+            fitness += abs(item.output[0] - result[0])
 
-        fitness = np.power(4 - fitness, 2)
+        # fitness = np.power(4 - fitness, 2)
+        fitness = 4 - fitness
         return fitness, None, [fitness], 1
 
     def render(self, ann: Ann, seed: Any = None, **kwargs) -> None:
         for item in self._dataset:
             result = ann.calculate(item.input)
             print(str(item) + "; Result " + str(result))
+
+    def get_seed_type(self) -> Union[None, Type[list]]:
+        return None
 
     def get_random_seed(self, count: int) -> None:
         return None

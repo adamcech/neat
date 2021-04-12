@@ -2,61 +2,131 @@ import math
 import random
 
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Union, Any
 
+from evaluators.evaluator import Evaluator
 from neat.config import Config
-from neat.encoding.edge import Edge
 from neat.encoding.genotype import Genotype
-from neat.encoding.node import Node
+from neat.encoding.innovation_map import InnovationMap
+from neat.encoding.node_activation import NodeActivation
+from neat.encoding.node_type import NodeType
 
 
 class Species:
     """Genotype Species"""
 
-    def __init__(self, representative: Genotype, species_id: int, representative_change: int):
+    def __init__(self, representative: Genotype, species_id: int, max_diffs: int, elitism: float):
         self.id = species_id
-        self.representative_change = representative_change
 
         self.representative = representative
-        self.members = [representative]  # type: List[Genotype]
-        self.compatibility = [1]  # type: List[float]
+
+        self.members = []  # type: List[Genotype]
+        self.add_member(representative, 0)
 
         self.age = 0
         self.fitness = 0
         self.score = 0
 
-        self._best_member = None
+        self.elitism = elitism
 
-    def add_member(self, genotype: Genotype, compatibility: float):
+        self.max_diffs = max_diffs
+
+        self._nodes = {}  # type: Dict[int, Tuple[NodeType, NodeActivation]]
+        self._edges = {}  # type: Dict[int, Tuple[int, int]]
+
+    def add_member(self, genotype: Genotype, diffs: int = None) -> None:
+        if genotype in self.members:
+            self.members.remove(genotype)
+
+        genotype.species_diff = self.calculate_compatibility(genotype)[1] if diffs is None else diffs
+        genotype.species_id = self.id
         self.members.append(genotype)
-        self.compatibility.append(compatibility)
 
-    def reset(self):
-        self._best_member = None
+    def reset_template(self) -> None:
+        self._nodes = {}
+        self._edges = {}
 
+        for g in self.get_elite():
+            for e in g.edges:
+                if e.enabled and e.innovation not in self._edges:
+                    self._edges[e.innovation] = (e.input, e.output)
+
+            for n in g.nodes:
+                if n.is_hidden() and n.id not in self._nodes:
+                    self._nodes[n.id] = (n.type, n.activation)
+
+    def get_mutate_template(self) -> Tuple[Dict[int, Tuple[NodeType, NodeActivation]], Dict[int, Tuple[int, int]]]:
+        return self._nodes, self._edges
+
+    def sort_members_by_score(self):
+        sort_indices = np.argsort([g.score for g in self.members])[::-1]
+        self.members = [self.members[sort_indices[i]] for i in range(len(sort_indices))]
+
+    def reset(self, species: List["Species"], population: List[Genotype]):
         self.age += 1
-        if self.age % self.representative_change == 0:
-            self.representative = random.sample(self.members, 1)[0]
+        # Reselect old representative
+        first = False  # True  # self.representative in population
 
-        self.members = [self.representative]
-        self.compatibility = [1]
+        while len(self.members) > 0:
+            if first:
+                representative = self.representative
+                first = False
+            else:
+                representative = self.get_best_member()
+                # representative = random.sample(self.members, 1)[0]
+
+            if representative in population:
+                is_valid = True
+                for s in [s for s in species if s.representative is not None]:
+                    if s.calculate_compatibility(representative)[0]:
+                        is_valid = False
+                        break
+            else:
+                is_valid = False
+
+            if is_valid:
+                self.representative = representative
+                self.representative.species_diff = 0
+                break
+            else:
+                self.members.remove(representative)
+
+        if len(self.members) > 0:
+            self.members = []  # type: List[Genotype]
+            self.add_member(self.representative, 0)
+        else:
+            self.representative = None
 
     def evaluate_fitness(self):
         self.fitness = 0 if len(self.members) == 0 else sum(member.fitness for member in self.members) / len(self.members)
         self.score = 0 if len(self.members) == 0 else sum(member.score for member in self.members) / len(self.members)
 
-    def remove_worst(self, percentage: float):
+    def get_score(self):
+        return 0 if len(self.members) == 0 else sum(member.score for member in self.members) / len(self.members)
+
+    def calculate_compatibility(self, genotype: Genotype) -> Tuple[bool, int]:
+        return self.representative.is_compatible(genotype, self.max_diffs)
+
+    def get_elite(self) -> List[Genotype]:
         sort_indices = np.argsort([member.score for member in self.members])[::-1]
-        self.members = [self.members[sort_indices[i]] for i in range(int(len(self.members) * (1 - percentage)))]
+        self.members = [self.members[i] for i in sort_indices]
+        return self.members[:max(3, math.ceil(len(self.members) * self.elitism))]
 
-    def calculate_compatibility(self, genotype: Genotype, threshold: float, max_diffs: int) -> Tuple[bool, float]:
-        return self.representative.is_compatible(genotype, threshold, max_diffs)
+    def get_species_edges(self) -> Dict[int, Tuple[int, int]]:
+        edges = {}
+        for genotype in self.members:
+            for edge in genotype.edges:
+                if edge.innovation not in edges and edge.enabled:
+                    edges[edge.innovation] = (edge.input, edge.output)
+        return edges
 
-    def get_elite(self, elitism: float) -> List[Genotype]:
-        sort_indices = np.argsort([member.score for member in self.members])[::-1]
-        self.members = [self.members[sort_indices[i]] for i in range(len(sort_indices))]
-
-        return self.members[:math.ceil(len(self.members) * elitism)]
+    def get_species_nodes(self) -> Dict[int, NodeType]:
+        nodes = {}
+        for genotype in self.members:
+            for node in genotype.nodes:
+                if node.id not in nodes and node.type == NodeType.HIDDEN:
+                    nodes[node.id] = node.type
+        return nodes
 
     def get_members_over_slot_limit(self, slots: int) -> List[Genotype]:
         outliers = []
@@ -64,67 +134,79 @@ class Species:
 
         if diff < 0:
             scores_indices = np.argsort([member.score for member in self.members])[::-1]
-            outliers.extend([self.members[scores_indices[i]] for i in range(slots, len(self.members))])
 
-            # self.members = [self.members[scores_indices[i]] for i in range(slots)]
-            # self.compatibility = [self.compatibility[scores_indices[i]] for i in range(slots)]
+            for i in range(slots, len(self.members)):
+                genotype = self.members[scores_indices[i]]
+                if genotype == self.representative:
+                    genotype = self.members[scores_indices[slots - 1]]
+                outliers.append(genotype)
+
+            self.members = [g for g in self.members if g not in outliers]
 
         return outliers
 
-    def add_templates(self, config: Config, genotypes: List[Genotype]):
-        species_genotypes_nodes = {}
-        species_genotypes_edges = {}
+    def mutate_stagnating_members(self, config: Config, innovation_map: InnovationMap) -> List[Genotype]:
+        return []
 
-        orig_members_len = len(self.members)
-        skips = 0
+        elite = self.get_elite()
+        # elite = [self.get_best_member()]
 
-        for i in range(len(genotypes)):
-            template_genotype = self.members[(i - skips) % orig_members_len]
-            genotype = genotypes[i]
+        stagnating = [g for g in self.members
+                      if config.generation - g.origin_generation > config.stagnation_ind and g not in elite and g != self.representative]
 
-            is_compatible, compatibility = self.calculate_compatibility(genotype, config.compatibility_threshold, config.compatibility_max_diffs)
-            if is_compatible:
-                skips += 1
-            else:
-                template_genotype_nodes = species_genotypes_nodes.get(template_genotype)
-                if template_genotype_nodes is None:
-                    template_genotype_nodes = {node.id: node.type for node in template_genotype.nodes}
-                    species_genotypes_nodes[template_genotype] = template_genotype_nodes
+        for genotype in stagnating:
+            random_genotype = self.roulette_select(elite, 1)[0]
 
-                template_genotype_edges = species_genotypes_edges.get(template_genotype)
-                if template_genotype_edges is None:
-                    template_genotype_edges = {edge.innovation: (edge.input, edge.output, edge.enabled) for edge in
-                                               template_genotype.edges}
-                    species_genotypes_edges[template_genotype] = template_genotype_edges
+            old_w = genotype.fitness / random_genotype.fitness if random_genotype.fitness != 0 else 1.0
+            genotype.mutate_to_template(config, random_genotype.get_template(), min(0.75, old_w), innovation_map)
+            self.add_member(genotype)
 
-                genotype_edges = {edge.innovation: (edge.input, edge.output, edge.enabled, edge.weight) for edge in
-                                  genotype.edges}
+        return stagnating
 
-                genotype.nodes = [Node(node_id, template_genotype_nodes[node_id]) for node_id in
-                                  template_genotype_nodes]
-                genotype.edges = []
-                for edge_innovation in template_genotype_edges:
-                    edge_input, edge_output, edge_enabled = template_genotype_edges[edge_innovation]
-                    orig_edge = genotype_edges.get(edge_innovation)
-                    genotype.edges.append(Edge(config, edge_input, edge_output, edge_enabled, edge_innovation,
-                                               weight=orig_edge if orig_edge is None else orig_edge[3]))
+    def add_templates(self, config: Config, genotypes: List[Genotype], forced_topology: bool, innovation_map: InnovationMap):
+        for genotype in genotypes:
+            if genotype in self.members:
+                _, diffs = self.calculate_compatibility(genotype)
+                genotype.origin_generation = config.generation
+                genotype.ancestor = None
+                self.add_member(genotype, diffs)
 
-                """
-                Preserve something from template
-                max_additions = math.floor(len(template_genotype_edges) * (1 + ((1 - config.compatibility_threshold) * 0.35)))
-                for edge_innovation in genotype_edges:
-                    edge_input, edge_output, edge_enabled, edge_weight = genotype_edges[edge_innovation]
+        best_members = self.get_elite()
+        # best_members = [self.get_best_member()]
 
-                    if edge_input in template_genotype_nodes and edge_output in template_genotype_nodes and edge_enabled and edge_innovation not in template_genotype_edges:
-                        genotype.edges.append(Edge(config, edge_input, edge_output, edge_enabled, edge_innovation, weight=edge_weight))
-                        max_additions -= 1
+        for genotype in genotypes:
+            if genotype in self.members:
+                continue
 
-                    if max_additions == 0:
-                        break
-                """
-                is_compatible, compatibility = self.calculate_compatibility(genotype, config.compatibility_threshold, config.compatibility_max_diffs)
+            if not forced_topology:
+                is_compatible, diffs = self.calculate_compatibility(genotype)
+                if is_compatible:
+                    genotype.origin_generation = config.generation
+                    genotype.ancestor = None
+                    self.add_member(genotype, diffs)
+                    continue
 
-            self.add_member(genotype, compatibility)
+            random_elite = self.roulette_select(best_members, 1)[0]  # type: Genotype
+
+            # genotype.mutate_by_template(config, random_elite.get_template(), 0.03)
+            # old_w = genotype.fitness / random_elite.fitness if random_elite.fitness != 0 else 1.0
+
+            genotype.mutate_to_template(config, random_elite.get_template(), 1.0, innovation_map)
+
+            self.add_member(genotype)
+
+    def restart_to_best(self, config: Config, best_genotype: Genotype, population: List[Genotype], innovation_map: InnovationMap):
+        best_template = best_genotype.get_template()
+        best_genotype.origin_generation = config.generation
+        best_genotype.ancestor = None
+
+        for genotype in population:
+            if genotype in self.members:
+                continue
+
+            old_w = genotype.fitness / best_genotype.fitness if best_genotype.fitness != 0 else 1.0
+            genotype.mutate_to_template(config, best_template, old_w, innovation_map)
+            self.add_member(genotype)
 
     def get_best_member(self) -> Genotype:
         best_score = 0
@@ -133,11 +215,46 @@ class Species:
                 best_score = i
         return self.members[best_score]
 
+    def get_best_members(self, count: int) -> List[Genotype]:
+        indices = np.argsort([g.score for g in self.members])[::-1]
+        return [self.members[indices[i]] for i in range(min(len(self.members), count))]
+
     def is_empty(self) -> bool:
         return len(self.members) == 0
 
     def is_extinct(self) -> bool:
-        return len(self.members) <= 2
+        return len(self.members) <= 3
 
     def __repr__(self):
-        return "### Fitness: " + str(self.score) + ", Members: " + str(len(self.members)) + " ###"
+        return "Species id: " + str(self.id) + "; Members: " + str(len(self.members)) + "; Score: " + str(self.score) + ";"
+
+    def test_elite(self, evaluator: Evaluator, seed: Union[None, List[Any]]) -> float:
+        _, avg, _ = evaluator.test(self.get_elite(), seed)
+        return sum(avg) / len(avg)
+
+    def roulette_select(self, population: List[Genotype], count: int) -> List[Genotype]:
+        selected = []
+        population = list(population)
+
+        for i in range(count):
+            g = self._roulette_select_single(population)
+            selected.append(g)
+            population.remove(g)
+
+        return selected
+
+    @staticmethod
+    def _roulette_select_single(population: List[Genotype]) -> Genotype:
+        total = sum(g.fitness for g in population)
+
+        if total > 0:
+            props = [g.fitness / total for g in population]
+        else:
+            props = [1 / len(population) for _ in population]
+
+        r = random.random()
+
+        for i in range(len(population)):
+            r -= props[i]
+            if r <= 0:
+                return population[i]

@@ -17,4 +17,4 @@ class RenderObserver(AbstractObserver):
         if self._generation % self._render_counter == self._render_counter - 1 and self._generation != 0:
             genotype = neat.population.get_best_member()
             print(genotype)
-            neat.config.dataset.render(Ann(genotype, neat.config.activation), genotype.evaluated_seed, loops=1)
+            neat.config.dataset.render(Ann(genotype, neat.config.target_function), genotype.evaluated_seed, loops=1)

@@ -1,0 +1,59 @@
+# General
+dataset: bipedal_walker
+population_size: 200
+learning_period: 20
+stagnation_ind: 10
+
+# End Params
+max_generations: 2000
+max_evals: 200000000000
+max_score_termination: 300.0
+
+# Nets Config
+bias_nodes: 0
+activation: tanh
+target_function: tanh
+start_min: False
+
+# Seed generation
+seed_max: 10
+seed_select: 0
+seed_select_random: 10
+seed_attempts: 0
+seed_next: 2000
+seed_test: 100
+
+# Species
+species_max: 8
+species_elitism: 0.1
+compatibility_max_diffs: 4
+compatibility_species_max_diffs: 12
+
+# Mutations prop
+mutate_add_node: 0.02
+mutate_add_edge: 0.2
+mutate_activation_change: 0.01
+mutate_de_shift: 0.03
+mutate_de_perturbate: 0.03
+mutate_de_random: 0.0
+mutate_nde_perturbation_over_random: 1.0
+archivate_prop: 0.01
+
+# Mutations vals
+mutate_shift_weight_lower_bound: 0.9
+mutate_shift_weight_upper_bound: 1.1
+weight_scale: 4.0
+weight_random_scale: 1.0
+weight_pert_scale: 0.25
+
+# Multiprocessing config
+mp_max_proc: 30
+mp_step: 3
+
+cluster_evaluation: True
+cluster_nodes_loc: /home/cec0113/nodes/
+cluster_main_loc: /home/cec0113/main/
+ray_info_loc: /home/cec0113/ray_info/info
+work_dir: /home/cec0113/Workspace/last_175/
+cluster_main_max_load: 20
+walltime_sec: 3600

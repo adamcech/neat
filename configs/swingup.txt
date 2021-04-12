@@ -1,0 +1,59 @@
+# General
+dataset: swingup
+population_size: 200
+learning_period: 25
+stagnation_ind: 25
+
+# End Params
+max_generations: 10000000000000000
+max_evals: 1000000000000000
+max_score_termination: 400.0
+
+# Nets Config
+bias_nodes: 0
+activation: tanh
+target_function: clamped
+start_min: True
+max_layers: 20
+
+# Seed generation
+seed_max: 3
+seed_select: 0
+seed_select_random: 3
+seed_attempts: 0
+seed_next: 5
+seed_test: 100
+
+# Species
+species_max: 5
+species_elitism: 0.1
+compatibility_max_diffs: 4
+compatibility_species_max_diffs: 8
+
+# Mutations prop
+mutate_add_node: 0.04
+mutate_add_edge: 0.4
+mutate_activation_change: 0.05
+mutate_de_shift: 0.03
+mutate_de_perturbate: 0.05
+mutate_de_random: 0.01
+mutate_nde_perturbation_over_random: 0.9
+archivate_prop: 0.01
+
+# Mutations vals
+mutate_shift_weight_lower_bound: 0.8
+mutate_shift_weight_upper_bound: 1.2
+min_weight: -4.0
+max_weight: 4.0
+
+# Multiprocessing config
+mp_max_proc: 30
+mp_step: 3
+
+cluster_evaluation: True
+cluster_nodes_loc: /home/cec0113/nodes/
+cluster_main_loc: /home/cec0113/main/
+ray_info_loc: /home/cec0113/ray_info/info
+work_dir: /home/cec0113/results/swingup_3/
+cluster_main_max_load: 20
+walltime_sec: 3600
